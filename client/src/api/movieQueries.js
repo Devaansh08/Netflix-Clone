@@ -89,6 +89,21 @@ export const useGenreMovies = (genreId, page = 1) => {
 };
 
 /**
+ * Fetch movies by audio/original language (en, ja, ko, es, hi, fr).
+ */
+export const useLanguageMovies = (languageCode, page = 1) => {
+  return useQuery({
+    queryKey: ['movies', 'language', languageCode, page],
+    queryFn: async () => {
+      const { data } = await api.get(`/movies/language/${languageCode}?page=${page}`);
+      return data;
+    },
+    staleTime: FIVE_MINUTES_MS,
+    enabled: !!languageCode
+  });
+};
+
+/**
  * Search movies by keyword string.
  */
 export const useSearchMovies = (query, page = 1) => {

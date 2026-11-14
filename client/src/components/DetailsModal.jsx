@@ -206,6 +206,22 @@ export const DetailsModal = ({ movie, onClose }) => {
               </span>
             </div>
           )}
+
+          {/* Audio & Subtitle Languages */}
+          <div className="pt-1 flex flex-wrap gap-y-1 gap-x-4 text-xs text-neutral-300">
+            <div>
+              <span className="font-semibold text-neutral-400">Audio: </span>
+              <span className="text-neutral-200">
+                {movie.audioLanguages ? movie.audioLanguages.join(', ') : (movie.languageLabel || 'English')}
+              </span>
+            </div>
+            <div>
+              <span className="font-semibold text-neutral-400">Subtitles: </span>
+              <span className="text-neutral-200">
+                English [CC], Spanish, French, Japanese, Korean
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

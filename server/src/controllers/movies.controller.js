@@ -81,6 +81,27 @@ export const getByGenre = async (req, res, next) => {
 };
 
 /**
+ * @route   GET /api/movies/language/:languageCode
+ * @desc    Get movies filtered by audio/original language (en, ja, ko, es, hi, fr)
+ * @access  Public
+ */
+export const getByLanguage = async (req, res, next) => {
+  try {
+    const { languageCode } = req.params;
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+
+    if (!languageCode) {
+      return next(new AppError('Language code is required', 400));
+    }
+
+    const data = await tmdbService.getByLanguage(languageCode, page);
+    res.status(200).json({ success: true, ...data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @route   GET /api/movies/search?q=
  * @desc    Search movies by query string
  * @access  Private

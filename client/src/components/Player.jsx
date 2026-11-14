@@ -31,7 +31,8 @@ import {
   Minimize,
   Settings,
   RotateCcw,
-  RotateCw
+  RotateCw,
+  Globe
 } from 'lucide-react';
 import api from '../api/axios.js';
 
@@ -55,6 +56,14 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
   const [levels, setLevels] = useState([]);
   const [currentLevel, setCurrentLevel] = useState(-1); // -1 = Auto
   const [showQualityMenu, setShowQualityMenu] = useState(false);
+  const [showAudioMenu, setShowAudioMenu] = useState(false);
+  const [selectedAudio, setSelectedAudio] = useState(
+    movie?.originalLanguage === 'ja' ? 'Japanese [Original]' :
+    movie?.originalLanguage === 'ko' ? 'Korean [Original]' :
+    movie?.originalLanguage === 'es' ? 'Spanish [Original]' :
+    movie?.originalLanguage === 'hi' ? 'Hindi [Original]' : 'English [Original]'
+  );
+  const [selectedSubtitle, setSelectedSubtitle] = useState('Off');
 
   const controlsTimeoutRef = useRef(null);
   const lastSavedTimeRef = useRef(0);
@@ -391,6 +400,61 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Audio & Subtitles Selector */}
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowAudioMenu((prev) => !prev);
+                  setShowQualityMenu(false);
+                }}
+                aria-label="Audio and subtitles"
+                className="flex items-center gap-1.5 text-sm font-semibold text-neutral-300 hover:text-white transition-colors"
+              >
+                <Globe className="h-5 w-5" />
+                <span className="hidden sm:inline text-xs">{selectedAudio.split(' ')[0]}</span>
+              </button>
+
+              {showAudioMenu && (
+                <div className="absolute bottom-10 right-0 mb-2 w-64 rounded-xl bg-neutral-900/95 backdrop-blur-2xl p-3 shadow-2xl border border-neutral-700 text-xs z-50">
+                  <div className="mb-2 pb-1 border-b border-neutral-800">
+                    <span className="font-bold text-neutral-400 uppercase tracking-wider text-[10px]">Audio Language</span>
+                    {['English [Original]', 'Japanese (Dolby Atmos)', 'Korean (5.1)', 'Spanish', 'Hindi'].map((aud) => (
+                      <button
+                        key={aud}
+                        onClick={() => {
+                          setSelectedAudio(aud);
+                          setShowAudioMenu(false);
+                        }}
+                        className={`w-full py-1 text-left px-2 rounded hover:bg-neutral-800 transition-colors ${
+                          selectedAudio === aud ? 'text-[#E50914] font-bold' : 'text-neutral-300'
+                        }`}
+                      >
+                        {aud}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div>
+                    <span className="font-bold text-neutral-400 uppercase tracking-wider text-[10px]">Subtitles</span>
+                    {['Off', 'English [CC]', 'Spanish', 'French', 'Japanese', 'Korean'].map((sub) => (
+                      <button
+                        key={sub}
+                        onClick={() => {
+                          setSelectedSubtitle(sub);
+                          setShowAudioMenu(false);
+                        }}
+                        className={`w-full py-1 text-left px-2 rounded hover:bg-neutral-800 transition-colors ${
+                          selectedSubtitle === sub ? 'text-[#E50914] font-bold' : 'text-neutral-300'
+                        }`}
+                      >
+                        {sub}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Quality Selector (HLS levels) */}
             {levels.length > 0 && (
               <div className="relative">

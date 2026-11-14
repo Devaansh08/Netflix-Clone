@@ -103,8 +103,24 @@ export const MovieCard = ({ movie, onSelect }) => {
     <div
       onClick={() => onSelect && onSelect(movie)}
       onMouseEnter={handleMouseEnter}
-      className="group relative flex-shrink-0 cursor-pointer overflow-hidden rounded-md bg-neutral-900 transition-all duration-300 ease-out hover:z-20 hover:scale-105 hover:shadow-2xl hover:shadow-black/80 w-32 sm:w-40 md:w-48"
+      className="group relative flex-shrink-0 cursor-pointer overflow-hidden rounded-xl bg-neutral-900 shadow-md ring-1 ring-white/10 transition-all duration-300 ease-out hover:z-20 hover:scale-105 active:scale-95 hover:shadow-2xl hover:shadow-black/80 hover:ring-white/30 w-32 sm:w-40 md:w-48 select-none"
     >
+      {/* Top Corner iOS Badges */}
+      <div className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between pointer-events-none">
+        {movie.rating > 0 ? (
+          <span className="flex items-center gap-0.5 rounded-full bg-black/70 backdrop-blur-md px-1.5 py-0.5 text-[10px] font-bold text-amber-400 border border-white/10 shadow">
+            <Star className="h-2.5 w-2.5 fill-current" />
+            {movie.rating}
+          </span>
+        ) : <span />}
+
+        {movie.originalLanguage && (
+          <span className="rounded-full bg-black/70 backdrop-blur-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-neutral-200 border border-white/10 shadow">
+            {movie.originalLanguage}
+          </span>
+        )}
+      </div>
+
       {/* Poster Image */}
       <div className="aspect-[2/3] w-full overflow-hidden bg-neutral-800">
         {movie.posterPath ? (
@@ -113,7 +129,7 @@ export const MovieCard = ({ movie, onSelect }) => {
             alt={movie.title}
             loading="lazy"
             decoding="async"
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:brightness-90"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:brightness-90"
           />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center p-3 text-center text-xs text-neutral-400">
@@ -123,19 +139,18 @@ export const MovieCard = ({ movie, onSelect }) => {
       </div>
 
       {/* Hover Overlay with Quick Actions */}
-      <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black via-black/40 to-transparent p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+      <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black via-black/50 to-transparent p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
         <h4 className="line-clamp-1 text-xs md:text-sm font-bold text-white drop-shadow">
           {movie.title}
         </h4>
 
-        {/* Rating & Release Year */}
+        {/* Rating & Language Info */}
         <div className="mt-1 flex items-center gap-2 text-[10px] md:text-xs text-neutral-300">
-          <span className="flex items-center gap-0.5 text-amber-400 font-semibold">
-            <Star className="h-3 w-3 fill-current" />
-            {movie.rating > 0 ? movie.rating : 'NR'}
-          </span>
+          {movie.languageLabel && (
+            <span className="text-neutral-400">{movie.languageLabel}</span>
+          )}
           {movie.releaseDate && (
-            <span>{new Date(movie.releaseDate).getFullYear()}</span>
+            <span>• {new Date(movie.releaseDate).getFullYear()}</span>
           )}
         </div>
 
