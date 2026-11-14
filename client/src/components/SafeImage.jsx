@@ -1,7 +1,7 @@
 /**
  * @file SafeImage.jsx
  * @description Resilient image component featuring skeleton shimmer loaders, smooth crossfade on load,
- * and automatic dynamic SVG poster generation on network/CDN failure.
+ * automatic error interception, and state reset on source update.
  * 
  * WHY THIS MATTERS FOR INTERVIEWS & PRODUCTION:
  * 1. Zero Broken Image Icons (Defensive UI Engineering):
@@ -11,12 +11,12 @@
  * 2. Cumulative Layout Shift (CLS) Elimination:
  *    Maintains strict aspect ratios and renders a pulse skeleton placeholder so content below doesn't
  *    jump when images finish downloading.
- * 3. Native Smooth Transitions:
- *    Uses CSS opacity transitions (`opacity-0` to `opacity-100`) to eliminate harsh image popping.
+ * 3. Reactive State Synchronization:
+ *    Listens to `src` changes via `useEffect` to reset loading and error flags when navigating or filtering.
  */
 
-import React, { useState } from 'react';
-import { Film, ImageOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Film } from 'lucide-react';
 
 export const SafeImage = ({
   src,
@@ -28,6 +28,12 @@ export const SafeImage = ({
 }) => {
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Reset state when image source changes (e.g. category filter, carousel transition)
+  useEffect(() => {
+    setHasError(false);
+    setIsLoaded(false);
+  }, [src]);
 
   // If no source is provided at all, immediately enter fallback mode
   const showFallback = hasError || !src;

@@ -88,15 +88,16 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
   }, [movie, duration]);
 
   // ============================================================================
-  // HLS Stream Setup & Teardown
+  // HLS & Progressive Video Stream Setup & Teardown
   // ============================================================================
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !streamInfo?.streamUrl) return;
 
     const streamUrl = streamInfo.streamUrl;
+    const isHls = streamUrl.includes('.m3u8');
 
-    if (Hls.isSupported()) {
+    if (isHls && Hls.isSupported()) {
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: true,
@@ -130,18 +131,25 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
               hls.recoverMediaError();
               break;
             default:
+              // Fallback to direct video source if Hls fails
               hls.destroy();
+              video.src = streamUrl;
+              video.play().catch(() => setIsPlaying(false));
               break;
           }
         }
       });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native Apple Safari HLS Engine
+    } else {
+      // Native progressive playback for MP4 / WebM or Apple Safari native HLS
       video.src = streamUrl;
-      video.addEventListener('loadedmetadata', () => {
-        if (initialProgress > 0) video.currentTime = initialProgress;
+      const handleLoadedMetadata = () => {
+        if (initialProgress > 0 && initialProgress < video.duration) {
+          video.currentTime = initialProgress;
+        }
         video.play().catch(() => setIsPlaying(false));
-      });
+      };
+
+      video.addEventListener('loadedmetadata', handleLoadedMetadata);
     }
 
     return () => {

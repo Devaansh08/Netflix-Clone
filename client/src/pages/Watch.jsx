@@ -73,7 +73,10 @@ export const Watch = () => {
     );
   }
 
-  const streamInfo = getStreamForMovie(id);
+  const movieStreamUrl = activeMovie?.streamUrl || activeMovie?.videoClipUrl;
+  const streamInfo = movieStreamUrl
+    ? { title: activeMovie?.title || 'Feature Film', streamUrl: movieStreamUrl, isDemo: true }
+    : getStreamForMovie(id);
 
   return (
     <Player
