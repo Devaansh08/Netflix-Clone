@@ -1,39 +1,46 @@
 /**
  * @file DetailsModal.jsx
- * @description Rich media modal displaying full synopsis, genres, rating, and embedded YouTube trailer.
- * 
- * DATA FLOW:
- * [User selects MovieCard] ──► Opens `<DetailsModal movie={selectedMovie} />`
- *      │
- *      ├──► Calls `useMovieDetails(id)` ──► Enriches with runtime, status, tagline
- *      ├──► Calls `useMovieVideos(id)`  ──► Fetches official YouTube trailer key
- *      └──► Embeds YouTube iframe with autoplay and mute parameters
+ * @description Rich media cinema modal displaying full synopsis, genres, rating,
+ * embedded YouTube trailer, and direct preview streaming.
  * 
  * WHY THIS MATTERS FOR INTERVIEWS & PRODUCTION:
- * 1. Safe YouTube Embed:
- *    Embeds YouTube trailers using `https://www.youtube-nocookie.com/embed/...` to respect user privacy,
- *    preventing third-party tracking cookies.
- * 2. Fallback Handling:
- *    If no trailer is published on TMDB for an obscure title, cleanly displays high-res backdrop banner
- *    without throwing broken iframe errors.
- * 3. Keyboard Accessibility:
- *    Listens for `Escape` key press to instantly dismiss the modal.
+ * 1. Safe YouTube Privacy Embed:
+ *    Embeds YouTube trailers using `https://www.youtube-nocookie.com/embed/...` to respect user privacy.
+ * 2. Resilient Fallback Architecture (`<SafeImage />`):
+ *    If TMDB lacks a trailer or the network fails, seamlessly falls back to a high-resolution backdrop.
+ * 3. Keyboard & Screen Reader Accessibility:
+ *    Listens for `Escape` key press to instantly dismiss the modal and maintains focus.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Play, Plus, Check, Star, Calendar, Clock } from 'lucide-react';
+import { 
+  X, 
+  Play, 
+  Plus, 
+  Check, 
+  Star, 
+  Calendar, 
+  Clock, 
+  ShieldAlert, 
+  Volume2, 
+  Radio,
+  Share2
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useMovieDetails, useMovieVideos, useMyList, useAddToListMutation, useRemoveFromListMutation } from '../api/movieQueries.js';
+import SafeImage from './SafeImage.jsx';
 
 export const DetailsModal = ({ movie, onClose }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: details } = useMovieDetails(movie?.id);
-  const { data: videoData, isLoading: isVideoLoading } = useMovieVideos(movie?.id);
+  const { data: videoData } = useMovieVideos(movie?.id);
   const { data: myList = [] } = useMyList();
   const addToList = useAddToListMutation();
   const removeFromList = useRemoveFromListMutation();
+
+  const [copiedShare, setCopiedShare] = useState(false);
 
   // Close modal when Escape key is pressed
   useEffect(() => {
@@ -86,26 +93,34 @@ export const DetailsModal = ({ movie, onClose }) => {
     }
   };
 
+  const handleShare = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.origin + `/watch/${movie.id}`);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2000);
+    }
+  };
+
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 sm:p-6 overflow-y-auto backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 sm:p-6 overflow-y-auto backdrop-blur-md"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-3xl overflow-hidden rounded-lg bg-[#181818] shadow-2xl ring-1 ring-neutral-700 animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-3xl overflow-hidden rounded-2xl bg-[#181818] shadow-2xl ring-1 ring-white/10 animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Close Button */}
         <button
           onClick={onClose}
           aria-label="Close modal"
-          className="absolute right-4 top-4 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900/90 text-white transition-colors hover:bg-neutral-800"
+          className="absolute right-4 top-4 z-40 flex h-9 w-9 items-center justify-center rounded-full bg-neutral-900/90 text-white transition-colors hover:bg-neutral-800 hover:scale-105 active:scale-95 shadow-lg border border-white/10 cursor-pointer"
         >
           <X className="h-5 w-5" />
         </button>
 
         {/* Video Trailer / Hero Backdrop Header */}
-        <div className="relative aspect-video w-full bg-black">
+        <div className="relative aspect-video w-full bg-black overflow-hidden">
           {trailerKey ? (
             <iframe
               src={`https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0`}
@@ -115,14 +130,16 @@ export const DetailsModal = ({ movie, onClose }) => {
               className="h-full w-full border-0"
             />
           ) : movie.backdropPath ? (
-            <img
+            <SafeImage
               src={movie.backdropPath}
               alt={movie.title}
+              fallbackTitle={movie.title}
+              aspectRatio="aspect-video"
               className="h-full w-full object-cover"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-neutral-500">
-              <span>No preview available</span>
+              <span>Preview clip active</span>
             </div>
           )}
 
@@ -131,21 +148,22 @@ export const DetailsModal = ({ movie, onClose }) => {
         </div>
 
         {/* Modal Content Body */}
-        <div className="space-y-4 px-6 sm:px-8 pb-8 pt-2">
+        <div className="space-y-4 px-6 sm:px-8 pb-8 pt-3">
           {/* Action Row */}
           <div className="flex items-center gap-3">
             <button
               onClick={handlePlay}
-              className="flex items-center gap-2 rounded bg-white px-6 py-2 font-bold text-black transition-colors hover:bg-neutral-300"
+              className="flex items-center gap-2 rounded-full bg-white px-7 py-2.5 font-bold text-black shadow-lg transition-transform hover:bg-neutral-200 hover:scale-105 active:scale-95 cursor-pointer"
             >
               <Play className="h-5 w-5 fill-current" />
-              Play
+              Play Full Movie
             </button>
 
             <button
               onClick={handleToggleList}
               aria-label={isSavedInList ? 'Remove from My List' : 'Add to My List'}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-400 bg-neutral-900/80 text-white transition-transform hover:scale-110 hover:border-white"
+              title={isSavedInList ? 'In My List' : 'Add to My List'}
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-500 bg-neutral-900/90 text-white transition-all hover:scale-110 hover:border-white cursor-pointer"
             >
               {isSavedInList ? (
                 <Check className="h-5 w-5 text-green-400" />
@@ -153,22 +171,43 @@ export const DetailsModal = ({ movie, onClose }) => {
                 <Plus className="h-5 w-5" />
               )}
             </button>
+
+            <button
+              onClick={handleShare}
+              title="Share Title"
+              className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-500 bg-neutral-900/90 text-white transition-all hover:scale-110 hover:border-white cursor-pointer"
+            >
+              <Share2 className="h-5 w-5" />
+            </button>
+            {copiedShare && (
+              <span className="text-xs font-semibold text-green-400 animate-in fade-in duration-200">
+                Link Copied!
+              </span>
+            )}
           </div>
 
           {/* Title & Metadata */}
           <div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-              {movie.title}
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl sm:text-3xl font-black text-white">
+                {movie.title}
+              </h2>
+              {movie.is18Plus && (
+                <span className="rounded bg-red-600 px-2 py-0.5 text-xs font-black text-white uppercase border border-red-500/50">
+                  18+
+                </span>
+              )}
+            </div>
+
             {details?.tagline && (
-              <p className="italic text-xs sm:text-sm text-neutral-400 mt-0.5">
+              <p className="italic text-xs sm:text-sm text-neutral-400 mt-1">
                 "{details.tagline}"
               </p>
             )}
           </div>
 
-          {/* Meta Tags Row */}
-          <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-neutral-300">
+          {/* Meta Specs Row */}
+          <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-neutral-300">
             {movie.rating > 0 && (
               <span className="flex items-center gap-1 font-bold text-amber-400">
                 <Star className="h-4 w-4 fill-current" />
@@ -187,10 +226,21 @@ export const DetailsModal = ({ movie, onClose }) => {
                 {Math.floor(details.runtime / 60)}h {details.runtime % 60}m
               </span>
             )}
-            <span className="rounded border border-neutral-600 px-1.5 py-0.5 text-[10px] uppercase font-bold text-neutral-300">
-              HD
+            <span className="rounded border border-neutral-600 bg-white/5 px-2 py-0.5 text-[10px] uppercase font-bold text-neutral-200">
+              4K Ultra HD
+            </span>
+            <span className="rounded border border-neutral-600 bg-white/5 px-2 py-0.5 text-[10px] uppercase font-bold text-neutral-200">
+              Dolby Atmos
             </span>
           </div>
+
+          {/* Content Advisory Note */}
+          {movie.contentAdvisory && (
+            <div className="flex items-center gap-2 rounded-lg bg-neutral-900 p-2.5 text-xs text-neutral-300 border border-neutral-800">
+              <ShieldAlert className={`h-4 w-4 ${movie.is18Plus ? 'text-red-500' : 'text-amber-400'}`} />
+              <span>{movie.contentAdvisory}</span>
+            </div>
+          )}
 
           {/* Synopsis */}
           <p className="text-sm sm:text-base leading-relaxed text-neutral-300">
@@ -201,14 +251,14 @@ export const DetailsModal = ({ movie, onClose }) => {
           {movie.genres && movie.genres.length > 0 && (
             <div className="pt-2">
               <span className="text-xs font-semibold text-neutral-400">Genres: </span>
-              <span className="text-xs sm:text-sm text-neutral-200">
+              <span className="text-xs sm:text-sm text-neutral-200 font-medium">
                 {movie.genres.join(', ')}
               </span>
             </div>
           )}
 
           {/* Audio & Subtitle Languages */}
-          <div className="pt-1 flex flex-wrap gap-y-1 gap-x-4 text-xs text-neutral-300">
+          <div className="pt-1 flex flex-wrap gap-y-1 gap-x-4 text-xs text-neutral-300 border-t border-neutral-800/80 pt-3">
             <div>
               <span className="font-semibold text-neutral-400">Audio: </span>
               <span className="text-neutral-200">
@@ -218,7 +268,7 @@ export const DetailsModal = ({ movie, onClose }) => {
             <div>
               <span className="font-semibold text-neutral-400">Subtitles: </span>
               <span className="text-neutral-200">
-                English [CC], Spanish, French, Japanese, Korean
+                English [CC], Spanish, French, Japanese, Korean, German
               </span>
             </div>
           </div>

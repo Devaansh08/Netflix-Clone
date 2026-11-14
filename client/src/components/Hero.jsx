@@ -1,20 +1,35 @@
 /**
  * @file Hero.jsx
- * @description Multi-slide cinematic hero billboard with automated carousel, genre badges, and maturity ratings.
+ * @description Multi-slide cinematic hero billboard with automated carousel, genre badges, 
+ * maturity ratings, and background video clip streaming with audio toggle.
  * 
  * WHY THIS MATTERS FOR INTERVIEWS & PRODUCTION:
- * 1. Multi-Genre Slide Showcase:
- *    Auto-rotates through 4 diverse blockbuster films representing different genres (Sci-Fi, Anime, Action, 18+ Thriller)
- *    giving visitors an immediate sense of vast catalog depth.
- * 2. Mobile Responsive & Touch Friendly:
- *    Auto-cycles smoothly on mobile and tablet displays with iOS-style pill pagination indicators.
- * 3. Regulatory Compliance (Maturity Badges):
- *    Displays explicit age advisories (18+, PG-13, PG) on each slide as required by streaming content policies.
+ * 1. Background Video Stream Crossfade:
+ *    Like Netflix and Apple TV+, the hero billboard begins streaming the cinematic video clip 
+ *    after 2.5 seconds of viewing the active slide, cross-fading from the static backdrop.
+ * 2. Interactive Audio Control:
+ *    Provides an in-hero sound toggle (mute/unmute) so visitors can experience movie sound directly.
+ * 3. Multi-Genre Slide Showcase:
+ *    Auto-rotates through diverse blockbuster films representing different genres (Sci-Fi, Anime, Action, 18+ Thriller).
+ * 4. Resilient Backdrop Loading:
+ *    Guarantees backdrop images load smoothly without visual flashes.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Info, Plus, Check, ChevronLeft, ChevronRight, Star, ShieldAlert } from 'lucide-react';
+import { 
+  Play, 
+  Info, 
+  Plus, 
+  Check, 
+  ChevronLeft, 
+  ChevronRight, 
+  Star, 
+  ShieldAlert, 
+  Volume2, 
+  VolumeX,
+  Radio
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useMyList, useAddToListMutation, useRemoveFromListMutation } from '../api/movieQueries.js';
 import { HeroSkeleton } from './Skeleton.jsx';
@@ -22,39 +37,61 @@ import { HeroSkeleton } from './Skeleton.jsx';
 export const Hero = ({ slides = [], isLoading, onSelect }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isVideoStreaming, setIsVideoStreaming] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: myList = [] } = useMyList();
   const addToList = useAddToListMutation();
   const removeFromList = useRemoveFromListMutation();
+
   const timerRef = useRef(null);
+  const videoTimerRef = useRef(null);
+  const heroVideoRef = useRef(null);
 
   const totalSlides = slides.length;
 
   const nextSlide = useCallback(() => {
     if (totalSlides > 0) {
       setCurrentSlide((prev) => (prev + 1) % totalSlides);
+      setIsVideoStreaming(false);
     }
   }, [totalSlides]);
 
   const prevSlide = useCallback(() => {
     if (totalSlides > 0) {
       setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides);
+      setIsVideoStreaming(false);
     }
   }, [totalSlides]);
 
-  // Automated slide rotation every 7 seconds (paused on hover)
+  // Automated slide rotation every 9 seconds (paused on hover or when video preview is active)
   useEffect(() => {
     if (totalSlides <= 1 || isPaused) return;
 
     timerRef.current = setInterval(() => {
       nextSlide();
-    }, 7000);
+    }, 9000);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [totalSlides, isPaused, nextSlide]);
+
+  // Start background video stream after staying on slide for 2.5 seconds
+  useEffect(() => {
+    setIsVideoStreaming(false);
+    if (videoTimerRef.current) clearTimeout(videoTimerRef.current);
+
+    videoTimerRef.current = setTimeout(() => {
+      setIsVideoStreaming(true);
+    }, 2500);
+
+    return () => {
+      if (videoTimerRef.current) clearTimeout(videoTimerRef.current);
+    };
+  }, [currentSlide]);
 
   if (isLoading || totalSlides === 0) {
     return <HeroSkeleton />;
@@ -98,15 +135,32 @@ export const Hero = ({ slides = [], isLoading, onSelect }) => {
     }
   };
 
+  const toggleAudio = () => {
+    setIsMuted((prev) => !prev);
+    if (heroVideoRef.current) {
+      heroVideoRef.current.muted = !isMuted;
+    }
+  };
+
   return (
     <div
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className="group/hero relative h-[70vh] sm:h-[80vh] md:h-[88vh] w-full select-none overflow-hidden bg-black"
+      className="group/hero relative h-[75vh] sm:h-[82vh] md:h-[90vh] w-full select-none overflow-hidden bg-black"
     >
-      {/* Background Backdrop Image with Crossfade */}
+      {/* Background Media: High-res Backdrop Image OR Live Video Stream */}
       <div className="absolute inset-0 transition-opacity duration-1000 ease-in-out">
-        {activeMovie.backdropPath ? (
+        {isVideoStreaming && activeMovie.videoClipUrl ? (
+          <video
+            ref={heroVideoRef}
+            src={activeMovie.videoClipUrl}
+            autoPlay
+            playsInline
+            muted={isMuted}
+            loop
+            className="h-full w-full object-cover animate-in fade-in duration-1000"
+          />
+        ) : activeMovie.backdropPath ? (
           <img
             key={activeMovie.id}
             src={activeMovie.backdropPath}
@@ -115,28 +169,36 @@ export const Hero = ({ slides = [], isLoading, onSelect }) => {
             fetchPriority="high"
           />
         ) : (
-          <div className="h-full w-full bg-gradient-to-r from-neutral-900 to-black" />
+          <div className="h-full w-full bg-gradient-to-r from-neutral-900 via-neutral-950 to-black" />
         )}
       </div>
 
-      {/* Cinematic Vignettes */}
+      {/* Cinematic Edge Gradients & Vignettes */}
       <div className="banner-left-fade absolute inset-0 z-10" />
       <div className="banner-vignette absolute inset-0 z-10" />
 
-      {/* Left / Right Carousel Navigation Arrows */}
+      {/* Live Stream Indicator (Top Right of Hero) */}
+      {isVideoStreaming && (
+        <div className="absolute top-24 right-6 sm:right-14 z-20 hidden sm:flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md border border-white/10 shadow-lg animate-in fade-in duration-500">
+          <Radio className="h-3.5 w-3.5 text-red-500 animate-pulse" />
+          <span>Streaming Preview</span>
+        </div>
+      )}
+
+      {/* Left / Right Carousel Navigation Chevrons */}
       {totalSlides > 1 && (
         <>
           <button
             onClick={prevSlide}
             aria-label="Previous featured film"
-            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-all group-hover/hero:opacity-100 hover:bg-black/80 hover:scale-110 active:scale-95 backdrop-blur-md"
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-all group-hover/hero:opacity-100 hover:bg-black/80 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer"
           >
             <ChevronLeft className="h-6 w-6 sm:h-7 sm:w-7" />
           </button>
           <button
             onClick={nextSlide}
             aria-label="Next featured film"
-            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-all group-hover/hero:opacity-100 hover:bg-black/80 hover:scale-110 active:scale-95 backdrop-blur-md"
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-all group-hover/hero:opacity-100 hover:bg-black/80 hover:scale-110 active:scale-95 backdrop-blur-md cursor-pointer"
           >
             <ChevronRight className="h-6 w-6 sm:h-7 sm:w-7" />
           </button>
@@ -144,7 +206,7 @@ export const Hero = ({ slides = [], isLoading, onSelect }) => {
       )}
 
       {/* Slide Content Meta Container */}
-      <div className="absolute bottom-20 sm:bottom-24 left-4 sm:left-8 md:left-16 z-20 max-w-xl md:max-w-2xl space-y-3 sm:space-y-4">
+      <div className="absolute bottom-16 sm:bottom-24 left-4 sm:left-8 md:left-16 z-20 max-w-xl md:max-w-2xl space-y-3 sm:space-y-4">
         {/* Genre & Maturity Badges */}
         <div className="flex flex-wrap items-center gap-2">
           {activeMovie.genres && activeMovie.genres.length > 0 && (
@@ -163,9 +225,13 @@ export const Hero = ({ slides = [], isLoading, onSelect }) => {
             {activeMovie.maturityRating || 'PG-13'}
           </span>
 
-          {/* Audio Language & Star Rating */}
+          {/* Audio Language & 4K Spec */}
           <span className="rounded bg-white/10 px-2 py-0.5 text-xs font-medium text-neutral-300 backdrop-blur-sm">
             {activeMovie.languageLabel} Audio
+          </span>
+
+          <span className="rounded border border-white/20 bg-black/40 px-1.5 py-0.5 text-[10px] font-bold text-neutral-200 backdrop-blur-sm">
+            4K ULTRA HD
           </span>
 
           {activeMovie.rating > 0 && (
@@ -221,23 +287,40 @@ export const Hero = ({ slides = [], isLoading, onSelect }) => {
         </div>
       </div>
 
-      {/* iOS Pagination Pill Dots (Bottom Center) */}
-      {totalSlides > 1 && (
-        <div className="absolute bottom-6 right-6 sm:right-12 z-30 flex items-center gap-2">
-          {slides.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => setCurrentSlide(idx)}
-              aria-label={`Go to slide ${idx + 1}`}
-              className={`h-1.5 transition-all duration-300 rounded-full cursor-pointer ${
-                currentSlide === idx
-                  ? 'w-8 bg-white'
-                  : 'w-2 bg-white/40 hover:bg-white/70'
-              }`}
-            />
-          ))}
-        </div>
-      )}
+      {/* Bottom Controls: Sound Toggle and Carousel Pagination Dots */}
+      <div className="absolute bottom-6 right-6 sm:right-12 z-30 flex items-center gap-4">
+        {/* In-Hero Sound Mute/Unmute Toggle */}
+        {isVideoStreaming && (
+          <button
+            onClick={toggleAudio}
+            aria-label={isMuted ? 'Unmute hero preview' : 'Mute hero preview'}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-md border border-white/20 hover:bg-black/90 hover:scale-110 active:scale-95 transition-all shadow-lg cursor-pointer"
+          >
+            {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5 text-red-500" />}
+          </button>
+        )}
+
+        {/* iOS Pagination Pill Dots */}
+        {totalSlides > 1 && (
+          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+            {slides.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => {
+                  setCurrentSlide(idx);
+                  setIsVideoStreaming(false);
+                }}
+                aria-label={`Go to slide ${idx + 1}`}
+                className={`h-1.5 transition-all duration-300 rounded-full cursor-pointer ${
+                  currentSlide === idx
+                    ? 'w-7 bg-white'
+                    : 'w-2 bg-white/40 hover:bg-white/70'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

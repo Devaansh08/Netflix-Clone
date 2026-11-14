@@ -47,6 +47,7 @@ export const MyList = () => {
               <MovieCard
                 key={item.tmdbId}
                 movie={{
+                  ...item,
                   id: item.tmdbId,
                   title: item.title,
                   posterPath: item.posterPath,

@@ -285,6 +285,15 @@ export const Home = () => {
               />
             )}
 
+            {/* Top 10 Movies Today (Featured Ranking) */}
+            <Row
+              title="Top 10 Movies on StreamVerse Today"
+              movies={trendingData?.results?.slice(0, 10)}
+              isLoading={isTrendingLoading}
+              onSelect={setSelectedMovie}
+              isTop10={true}
+            />
+
             {/* Trending Now */}
             <Row
               title="Trending Now"

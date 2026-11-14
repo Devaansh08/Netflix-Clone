@@ -23,12 +23,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Search as SearchIcon, X, Film } from 'lucide-react';
+import { Search as SearchIcon, X, Film, Sparkles } from 'lucide-react';
 import Navbar from '../components/Navbar.jsx';
 import MovieCard from '../components/MovieCard.jsx';
 import DetailsModal from '../components/DetailsModal.jsx';
 import Footer from '../components/Footer.jsx';
-import { useSearchMovies } from '../api/movieQueries.js';
+import { useSearchMovies, useTrendingMovies } from '../api/movieQueries.js';
 
 export const Search = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,7 +45,9 @@ export const Search = () => {
   }, [searchTerm]);
 
   const { data: searchData, isLoading, isFetching } = useSearchMovies(debouncedQuery);
+  const { data: trendingData } = useTrendingMovies();
   const results = searchData?.results || [];
+  const recommended = trendingData?.results || [];
 
   return (
     <div className="min-h-screen bg-[#141414] pb-20">
@@ -84,9 +86,10 @@ export const Search = () => {
               {results.length > 0 && ` (${results.length} found)`}
             </p>
           ) : (
-            <p className="text-center w-full text-neutral-500">
-              Find your next favorite film. Start typing in the search bar above.
-            </p>
+            <div className="flex items-center gap-2 text-white font-bold text-base sm:text-lg">
+              <Sparkles className="h-4 w-4 text-[#E50914]" />
+              <span>Recommended & Trending Searches</span>
+            </div>
           )}
 
           {isFetching && (
@@ -97,7 +100,7 @@ export const Search = () => {
           )}
         </div>
 
-        {/* Results Grid */}
+        {/* Results Grid OR Recommended Grid */}
         {debouncedQuery && results.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
             {results.map((movie) => (
@@ -115,6 +118,16 @@ export const Search = () => {
             <p className="text-sm text-neutral-500 max-w-sm mt-1">
               We couldn't find any titles matching "{debouncedQuery}". Try checking for typos or searching for a different keyword.
             </p>
+          </div>
+        ) : !debouncedQuery && recommended.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+            {recommended.map((movie) => (
+              <MovieCard
+                key={movie.id}
+                movie={movie}
+                onSelect={setSelectedMovie}
+              />
+            ))}
           </div>
         ) : null}
       </div>
