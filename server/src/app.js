@@ -27,6 +27,8 @@ import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import healthRoutes from './routes/health.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import movieRoutes from './routes/movies.routes.js';
+import listRoutes from './routes/list.routes.js';
+import historyRoutes from './routes/history.routes.js';
 
 const app = express();
 
@@ -91,6 +93,8 @@ if (env.isDevelopment) {
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/movies', movieRoutes);
+app.use('/api/list', listRoutes);
+app.use('/api/history', historyRoutes);
 
 // Root greeting endpoint
 app.get('/', (req, res) => {
