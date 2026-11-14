@@ -18,6 +18,7 @@ import { Bookmark, Plus } from 'lucide-react';
 import Navbar from '../components/Navbar.jsx';
 import MovieCard from '../components/MovieCard.jsx';
 import DetailsModal from '../components/DetailsModal.jsx';
+import Footer from '../components/Footer.jsx';
 import { useMyList } from '../api/movieQueries.js';
 
 export const MyList = () => {
@@ -80,6 +81,9 @@ export const MyList = () => {
           onClose={() => setSelectedMovie(null)}
         />
       )}
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };

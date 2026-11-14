@@ -19,6 +19,7 @@ import {
   getPopular,
   getByGenre,
   getByLanguage,
+  getMature18Plus,
   search,
   getDetails,
   getVideos
@@ -40,6 +41,7 @@ router.get('/top-rated', getTopRated);
 router.get('/popular', getPopular);
 router.get('/genre/:genreId', getByGenre);
 router.get('/language/:languageCode', getByLanguage);
+router.get('/mature-18plus', getMature18Plus);
 router.get('/search', search);
 
 // Dynamic item routes

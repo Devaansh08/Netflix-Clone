@@ -102,6 +102,21 @@ export const getByLanguage = async (req, res, next) => {
 };
 
 /**
+ * @route   GET /api/movies/mature-18plus
+ * @desc    Get 18+ adult / mature rated catalog items
+ * @access  Public (Subject to client-side age confirmation policy)
+ */
+export const getMature18Plus = async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const data = await tmdbService.getMature18Plus(page);
+    res.status(200).json({ success: true, ...data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @route   GET /api/movies/search?q=
  * @desc    Search movies by query string
  * @access  Private

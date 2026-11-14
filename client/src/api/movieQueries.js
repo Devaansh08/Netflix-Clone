@@ -104,6 +104,20 @@ export const useLanguageMovies = (languageCode, page = 1) => {
 };
 
 /**
+ * Fetch 18+ Mature content collection.
+ */
+export const useMature18PlusMovies = (page = 1) => {
+  return useQuery({
+    queryKey: ['movies', 'mature-18plus', page],
+    queryFn: async () => {
+      const { data } = await api.get(`/movies/mature-18plus?page=${page}`);
+      return data;
+    },
+    staleTime: FIVE_MINUTES_MS
+  });
+};
+
+/**
  * Search movies by keyword string.
  */
 export const useSearchMovies = (query, page = 1) => {

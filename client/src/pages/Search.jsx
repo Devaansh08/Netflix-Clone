@@ -27,6 +27,7 @@ import { Search as SearchIcon, X, Film } from 'lucide-react';
 import Navbar from '../components/Navbar.jsx';
 import MovieCard from '../components/MovieCard.jsx';
 import DetailsModal from '../components/DetailsModal.jsx';
+import Footer from '../components/Footer.jsx';
 import { useSearchMovies } from '../api/movieQueries.js';
 
 export const Search = () => {
@@ -125,6 +126,9 @@ export const Search = () => {
           onClose={() => setSelectedMovie(null)}
         />
       )}
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 };
