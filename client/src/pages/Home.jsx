@@ -16,7 +16,8 @@
  *    18+ Action, Sci-Fi, Korean Suspense, Top 10 Today, and Global Cinema.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Film, 
   Globe, 
@@ -123,10 +124,23 @@ const AUDIO_LANG_FILTERS = [
 ];
 
 export const Home = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlCategory = searchParams.get('category');
+
   const [selectedMovie, setSelectedMovie] = useState(null);
-  const [activeGenre, setActiveGenre] = useState('all');
+  const [activeGenre, setActiveGenre] = useState(urlCategory || 'all');
   const [activeLanguage, setActiveLanguage] = useState('all');
   const [sortBy, setSortBy] = useState('popularity'); // popularity, rating, year
+
+  // Synchronize state when URL query parameter changes (e.g. from Navbar dropdown)
+  useEffect(() => {
+    if (urlCategory) {
+      setActiveGenre(urlCategory);
+      setActiveLanguage('all');
+    } else {
+      setActiveGenre('all');
+    }
+  }, [urlCategory]);
 
   // 18+ Content Policy & Parental Gate State
   const [is18PlusAllowed, setIs18PlusAllowed] = useState(true);
@@ -178,7 +192,12 @@ export const Home = () => {
       return;
     }
     setActiveGenre(genreId);
-    if (genreId !== 'all') setActiveLanguage('all');
+    if (genreId !== 'all') {
+      setActiveLanguage('all');
+      setSearchParams({ category: genreId });
+    } else {
+      setSearchParams({});
+    }
   };
 
   const confirm18PlusAge = () => {
@@ -186,6 +205,7 @@ export const Home = () => {
     setShowAgeVerificationModal(false);
     setActiveGenre('18plus');
     setActiveLanguage('all');
+    setSearchParams({ category: '18plus' });
   };
 
   // Filtered view logic with sorting
@@ -292,6 +312,7 @@ export const Home = () => {
                   onClick={() => {
                     setActiveGenre('all');
                     setActiveLanguage('all');
+                    setSearchParams({});
                   }}
                   className="text-xs text-red-400 hover:text-white underline ml-3 whitespace-nowrap cursor-pointer font-semibold"
                 >
@@ -389,7 +410,10 @@ export const Home = () => {
                   </div>
 
                   <button
-                    onClick={() => setActiveGenre('all')}
+                    onClick={() => {
+                      setActiveGenre('all');
+                      setSearchParams({});
+                    }}
                     className="flex items-center gap-1.5 rounded-xl border border-neutral-700 bg-neutral-900/80 px-4 py-2 text-xs font-bold text-neutral-200 hover:text-white hover:border-white transition-all cursor-pointer"
                   >
                     <ArrowLeft className="h-4 w-4" />

@@ -62,7 +62,10 @@ export const Row = ({ title, movies = [], isLoading = false, onSelect, isTop10 =
   }
 
   return (
-    <div className="group/row relative space-y-2 px-4 md:px-12 my-6">
+    <div 
+      className="group/row relative space-y-2 px-4 md:px-12 my-6"
+      style={{ contentVisibility: 'auto', containIntrinsicSize: '320px' }}
+    >
       {/* Category Row Title */}
       <div className="flex items-center justify-between">
         <h3 className="text-base sm:text-lg md:text-xl font-bold tracking-wide text-white drop-shadow flex items-center gap-2">
