@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test:phase1": "node test-phase1.js"
+    "test:phase1": "node test-phase1.js",
+    "test:phase2": "node test-phase2.js"
   },
   "keywords": [
     "netflix-clone",
@@ -20,12 +21,14 @@
   "author": "StreamVerse Engineering Team",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^18.0.10",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.4",
     "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.12.1",
     "morgan": "^1.12.1"
   }
