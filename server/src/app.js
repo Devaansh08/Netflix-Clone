@@ -26,6 +26,7 @@ import globalLimiter from './middleware/rateLimiter.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import healthRoutes from './routes/health.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import movieRoutes from './routes/movies.routes.js';
 
 const app = express();
 
@@ -89,6 +90,7 @@ if (env.isDevelopment) {
 // Application API Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/movies', movieRoutes);
 
 // Root greeting endpoint
 app.get('/', (req, res) => {
