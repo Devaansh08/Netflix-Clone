@@ -29,6 +29,14 @@ const router = Router();
 // Enforce authentication across all movie catalog endpoints
 router.use(authenticate);
 
+// HTTP Caching Headers: Allows browser and edge proxy caching for 5 minutes
+router.use((req, res, next) => {
+  if (req.method === 'GET') {
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+  }
+  next();
+});
+
 // Specific collection routes (Must come before /:id)
 router.get('/trending', getTrending);
 router.get('/top-rated', getTopRated);

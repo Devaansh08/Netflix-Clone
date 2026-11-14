@@ -20,6 +20,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
+import compression from 'compression';
 
 import env from './config/env.js';
 import globalLimiter from './middleware/rateLimiter.js';
@@ -55,6 +56,12 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+/**
+ * Compression: Gzip/Deflate compression for outgoing responses.
+ * Dramatically cuts transfer size by ~60-80% for large catalog JSON payloads.
+ */
+app.use(compression());
 
 /**
  * Express Rate Limit: Throttles excessive requests per IP address to safeguard server stability.
