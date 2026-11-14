@@ -23,10 +23,12 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Play, Plus, Check, Star, Calendar, Clock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext.jsx';
 import { useMovieDetails, useMovieVideos, useMyList, useAddToListMutation, useRemoveFromListMutation } from '../api/movieQueries.js';
 
 export const DetailsModal = ({ movie, onClose }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: details } = useMovieDetails(movie?.id);
   const { data: videoData, isLoading: isVideoLoading } = useMovieVideos(movie?.id);
   const { data: myList = [] } = useMyList();
@@ -49,10 +51,29 @@ export const DetailsModal = ({ movie, onClose }) => {
 
   const handlePlay = () => {
     onClose();
+    if (!user) {
+      navigate('/login', {
+        state: {
+          from: { pathname: `/watch/${movie.id}` },
+          message: 'Please sign in or create an account to watch full movies and videos on StreamVerse.'
+        }
+      });
+      return;
+    }
     navigate(`/watch/${movie.id}`, { state: { movie } });
   };
 
   const handleToggleList = () => {
+    if (!user) {
+      onClose();
+      navigate('/login', {
+        state: {
+          from: { pathname: '/' },
+          message: 'Please sign in to save titles to your personal My List.'
+        }
+      });
+      return;
+    }
     if (isSavedInList) {
       removeFromList.mutate(movie.id);
     } else {

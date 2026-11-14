@@ -70,14 +70,14 @@ export function App() {
         <BrowserRouter>
           <Suspense fallback={<PageFallback />}>
             <Routes>
-              {/* Public Authentication Routes */}
+              {/* Public Catalog & Authentication Routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/search" element={<Search />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
 
-              {/* Protected Application Routes */}
+              {/* Protected Viewing & User Feature Routes */}
               <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<Home />} />
-                <Route path="/search" element={<Search />} />
                 <Route path="/my-list" element={<MyList />} />
                 <Route path="/watch/:id" element={<Watch />} />
               </Route>

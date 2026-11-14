@@ -85,24 +85,24 @@ export const Navbar = () => {
         )}
       </div>
 
-      {/* Right Section: Search & Profile */}
-      {user && (
-        <div className="flex items-center gap-4 sm:gap-6">
-          {/* Search Icon */}
-          <Link
-            to="/search"
-            aria-label="Search movies"
-            className="text-neutral-200 transition-colors hover:text-white p-1"
-          >
-            <Search className="h-5 w-5" />
-          </Link>
+      {/* Right Section: Search & Profile or Login/Signup buttons */}
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Search Icon (Available to all visitors) */}
+        <Link
+          to="/search"
+          aria-label="Search movies"
+          className="text-neutral-200 transition-colors hover:text-white p-1"
+        >
+          <Search className="h-5 w-5" />
+        </Link>
 
-          {/* Profile Dropdown Container */}
+        {user ? (
+          /* Profile Dropdown Container for Authenticated Users */
           <div className="relative">
             <button
               onClick={() => setShowProfileMenu((prev) => !prev)}
               aria-label="User profile menu"
-              className="flex items-center gap-2 rounded bg-neutral-800 p-1.5 transition-colors hover:bg-neutral-700"
+              className="flex items-center gap-2 rounded bg-neutral-800 p-1.5 transition-colors hover:bg-neutral-700 cursor-pointer"
             >
               <div className="flex h-7 w-7 items-center justify-center rounded bg-[#E50914] text-xs font-bold text-white uppercase">
                 {user.name ? user.name.charAt(0) : 'U'}
@@ -127,7 +127,7 @@ export const Navbar = () => {
 
                 <button
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-neutral-300 transition-colors hover:bg-neutral-800 hover:text-[#E50914]"
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-neutral-300 transition-colors hover:bg-neutral-800 hover:text-[#E50914] cursor-pointer"
                 >
                   <LogOut className="h-4 w-4" />
                   Sign Out of StreamVerse
@@ -135,8 +135,24 @@ export const Navbar = () => {
               </div>
             )}
           </div>
-        </div>
-      )}
+        ) : (
+          /* Login and Signup Action Buttons for Public Visitors */
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              to="/login"
+              className="rounded px-3 py-1.5 text-xs sm:text-sm font-semibold text-neutral-200 transition-colors hover:text-white hover:bg-white/10"
+            >
+              Sign In
+            </Link>
+            <Link
+              to="/signup"
+              className="rounded bg-[#E50914] px-3.5 py-1.5 text-xs sm:text-sm font-bold text-white shadow-md transition-colors hover:bg-red-700"
+            >
+              Sign Up
+            </Link>
+          </div>
+        )}
+      </div>
     </nav>
   );
 };

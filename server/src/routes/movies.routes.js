@@ -13,7 +13,6 @@
  */
 
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.js';
 import {
   getTrending,
   getTopRated,
@@ -25,9 +24,6 @@ import {
 } from '../controllers/movies.controller.js';
 
 const router = Router();
-
-// Enforce authentication across all movie catalog endpoints
-router.use(authenticate);
 
 // HTTP Caching Headers: Allows browser and edge proxy caching for 5 minutes
 router.use((req, res, next) => {

@@ -24,11 +24,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Info, Plus, Check } from 'lucide-react';
+import { useAuth } from '../context/AuthContext.jsx';
 import { useMyList, useAddToListMutation, useRemoveFromListMutation } from '../api/movieQueries.js';
 import { HeroSkeleton } from './Skeleton.jsx';
 
 export const Hero = ({ movie, isLoading, onSelect }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: myList = [] } = useMyList();
   const addToList = useAddToListMutation();
   const removeFromList = useRemoveFromListMutation();
@@ -40,10 +42,28 @@ export const Hero = ({ movie, isLoading, onSelect }) => {
   const isSavedInList = myList.some((item) => item.tmdbId === movie.id);
 
   const handlePlay = () => {
+    if (!user) {
+      navigate('/login', {
+        state: {
+          from: { pathname: `/watch/${movie.id}` },
+          message: 'Please sign in or create an account to watch full movies and videos on StreamVerse.'
+        }
+      });
+      return;
+    }
     navigate(`/watch/${movie.id}`, { state: { movie } });
   };
 
   const handleToggleList = () => {
+    if (!user) {
+      navigate('/login', {
+        state: {
+          from: { pathname: '/' },
+          message: 'Please sign in to save titles to your personal My List.'
+        }
+      });
+      return;
+    }
     if (isSavedInList) {
       removeFromList.mutate(movie.id);
     } else {

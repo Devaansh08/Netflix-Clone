@@ -14,7 +14,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Film, AlertCircle } from 'lucide-react';
+import { Film, AlertCircle, Play } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export const Login = () => {
@@ -28,6 +28,7 @@ export const Login = () => {
   const location = useLocation();
 
   const destination = location.state?.from?.pathname || '/';
+  const promptMessage = location.state?.message || '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,6 +64,14 @@ export const Login = () => {
       <div className="flex items-center justify-center px-4 pb-16">
         <div className="w-full max-w-md rounded-lg bg-black/75 p-8 sm:p-14 shadow-2xl backdrop-blur-md border border-neutral-800">
           <h1 className="mb-7 text-3xl font-bold text-white">Sign In</h1>
+
+          {/* Friendly prompt if redirected from video play or watchlist */}
+          {promptMessage && !errorMessage && (
+            <div className="mb-6 flex items-start gap-3 rounded bg-[#E50914]/20 border border-[#E50914]/50 p-3 text-sm text-red-200">
+              <Play className="h-5 w-5 flex-shrink-0 text-[#E50914] mt-0.5 fill-current" />
+              <span>{promptMessage}</span>
+            </div>
+          )}
 
           {errorMessage && (
             <div className="mb-6 flex items-start gap-3 rounded bg-amber-900/40 border border-amber-600/50 p-3 text-sm text-amber-200">
