@@ -35,7 +35,7 @@ export const ProtectedRoute = () => {
       <div className="flex h-screen w-screen items-center justify-center bg-[#141414]">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#E50914] border-t-transparent"></div>
-          <span className="text-sm font-semibold tracking-wider text-neutral-400">STREAMVERSE</span>
+          <span className="text-sm font-semibold tracking-wider text-neutral-400">NETFLIX</span>
         </div>
       </div>
     );

@@ -30,6 +30,7 @@ import authRoutes from './routes/auth.routes.js';
 import movieRoutes from './routes/movies.routes.js';
 import listRoutes from './routes/list.routes.js';
 import historyRoutes from './routes/history.routes.js';
+import notificationRoutes from './routes/notifications.routes.js';
 
 const app = express();
 
@@ -47,12 +48,32 @@ app.use(helmet({
 
 /**
  * CORS (Cross-Origin Resource Sharing):
- * Ensures only our trusted frontend (e.g. http://localhost:5173 or production domain)
- * can communicate with the API, while enabling `credentials: true` for secure httpOnly cookies.
+ * Ensures our frontend (e.g. http://localhost:5173 or 127.0.0.1) can communicate cleanly
+ * with the API while enabling `credentials: true` for secure httpOnly session cookies.
  */
+const allowedOrigins = [
+  env.CLIENT_URL,
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+  'http://localhost:3000'
+].filter(Boolean);
+
 app.use(cors({
-  origin: env.CLIENT_URL,
-  credentials: true, // Crucial: allows browser to send and receive httpOnly cookies across origins
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, mobile apps, Supertest)
+    if (!origin) return callback(null, true);
+    if (
+      allowedOrigins.includes(origin) || 
+      origin.startsWith('http://localhost:') || 
+      origin.startsWith('http://127.0.0.1:')
+    ) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  credentials: true, // Allows browser to forward httpOnly cookies across ports
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
@@ -102,13 +123,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/movies', movieRoutes);
 app.use('/api/list', listRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Root greeting endpoint
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    service: 'StreamVerse API',
-    version: '1.0.0',
+    service: 'Netflix Clone API',
+    version: '2.0.0',
     documentation: '/api/health'
   });
 });

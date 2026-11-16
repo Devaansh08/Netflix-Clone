@@ -3,6 +3,11 @@ node_modules/
 .pnp
 .pnp.js
 
+# Build Outputs
+dist/
+dist-ssr/
+build/
+
 # Environment Variables
 .env
 .env.local
@@ -16,6 +21,8 @@ yarn-error.log*
 logs/
 *.log
 
-# OS Metadata
+# Editor & OS Metadata
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db

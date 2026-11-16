@@ -1,21 +1,14 @@
 /**
  * @file Player.jsx
- * @description Production-grade HLS adaptive video player featuring custom controls and progress sync.
+ * @description Production-grade dual-engine cinema player supporting both official studio 
+ * video features/trailers and multi-bitrate adaptive HLS streaming with progress sync.
  * 
  * DATA FLOW:
  * [Watch Page Mounts <Player />]
  *      │
- *      ├──► Initializes `Hls.js` (or native Safari HLS)
- *      ├──► Attaches playback listeners (timeupdate, waiting, playing)
- *      ├──► Fetches previous playback checkpoint ──► Resumes video time
- *      └──► Heartbeat Timer (every 10s & pause/unmount) ──► PUT /api/history
- * 
- * HOW ADAPTIVE BITRATE STREAMING (ABR) WORKS:
- * Instead of serving one large video file, video encoders chop content into short 2-6 second chunks (.ts or fMP4)
- * and encode them at multiple bitrates (360p, 720p, 1080p, 4K). An HLS master playlist (.m3u8) indexes them.
- * Hls.js monitors the browser's download speed and buffer fullness:
- * - If Wi-Fi degrades, it requests smaller bitrate chunks to prevent buffering.
- * - When Wi-Fi recovers, it seamlessly ramps up to crystal-clear 1080p without stopping playback.
+ *      ├──► Mode 1 (Default): Authentic Official Studio Video (via verified YouTube trailerKey)
+ *      ├──► Mode 2: Multi-bitrate Adaptive HLS Streaming Engine (via Hls.js + ABR)
+ *      └──► Heartbeat Progress Sync (every 10s & unmount) ──► PUT /api/history
  */
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -32,24 +25,34 @@ import {
   Settings,
   RotateCcw,
   RotateCw,
-  Globe
+  Globe,
+  Sparkles,
+  Film
 } from 'lucide-react';
 import api from '../api/axios.js';
 
-export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
+export const Player = ({ movie, streamInfo, trailerKey, initialProgress = 0 }) => {
   const navigate = useNavigate();
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const hlsRef = useRef(null);
 
-  // Playback state
+  const effectiveTrailerKey = trailerKey || movie?.trailerKey || movie?.trailer_key || null;
+
+  // Dual-Engine Player Mode: 'official' (authentic title video) vs 'hls' (adaptive stream)
+  const [activeMode, setActiveMode] = useState(effectiveTrailerKey ? 'official' : 'hls');
+
+  // Playback state for HLS mode
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [currentTime, setCurrentTime] = useState(initialProgress || 0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Simulated progress for official studio video mode
+  const [officialProgress, setOfficialProgress] = useState(initialProgress || 0);
 
   // Controls visibility & HLS Levels
   const [showControls, setShowControls] = useState(true);
@@ -66,7 +69,14 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
   const [selectedSubtitle, setSelectedSubtitle] = useState('Off');
 
   const controlsTimeoutRef = useRef(null);
-  const lastSavedTimeRef = useRef(0);
+  const lastSavedTimeRef = useRef(initialProgress || 0);
+
+  // Update activeMode if effectiveTrailerKey becomes available asynchronously
+  useEffect(() => {
+    if (effectiveTrailerKey && activeMode !== 'hls') {
+      setActiveMode('official');
+    }
+  }, [effectiveTrailerKey]);
 
   /**
    * Save current playback progress to backend watch history.
@@ -79,7 +89,7 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
         title: movie.title,
         posterPath: movie.posterPath,
         progressSeconds: Math.floor(timeToSave),
-        durationSeconds: Math.floor(totalDuration || duration)
+        durationSeconds: Math.floor(totalDuration || duration || 180)
       });
       lastSavedTimeRef.current = timeToSave;
     } catch (err) {
@@ -88,9 +98,41 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
   }, [movie, duration]);
 
   // ============================================================================
-  // HLS & Progressive Video Stream Setup & Teardown
+  // Official Mode Progress Heartbeat Sync (Every 10 Seconds)
   // ============================================================================
   useEffect(() => {
+    if (activeMode !== 'official' || !movie?.id) return;
+
+    const interval = setInterval(() => {
+      setOfficialProgress((prev) => {
+        const next = prev + 10;
+        if (Math.abs(next - lastSavedTimeRef.current) >= 5) {
+          saveProgress(next, 180);
+        }
+        return next;
+      });
+    }, 10000);
+
+    return () => {
+      clearInterval(interval);
+      if (officialProgress > 0) {
+        saveProgress(officialProgress, 180);
+      }
+    };
+  }, [activeMode, movie, officialProgress, saveProgress]);
+
+  // ============================================================================
+  // HLS & Progressive Video Stream Setup & Teardown (Only when activeMode === 'hls')
+  // ============================================================================
+  useEffect(() => {
+    if (activeMode !== 'hls') {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+      return;
+    }
+
     const video = videoRef.current;
     if (!video || !streamInfo?.streamUrl) return;
 
@@ -110,7 +152,6 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
 
       hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
         setLevels(data.levels);
-        // Resume from saved progress if available
         if (initialProgress > 0 && initialProgress < video.duration) {
           video.currentTime = initialProgress;
         }
@@ -131,7 +172,6 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
               hls.recoverMediaError();
               break;
             default:
-              // Fallback to direct video source if Hls fails
               hls.destroy();
               video.src = streamUrl;
               video.play().catch(() => setIsPlaying(false));
@@ -140,7 +180,6 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
         }
       });
     } else {
-      // Native progressive playback for MP4 / WebM or Apple Safari native HLS
       video.src = streamUrl;
       const handleLoadedMetadata = () => {
         if (initialProgress > 0 && initialProgress < video.duration) {
@@ -153,24 +192,22 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
     }
 
     return () => {
-      // Flush final progress on component unmount
       if (videoRef.current) {
         saveProgress(videoRef.current.currentTime, videoRef.current.duration);
       }
       if (hlsRef.current) {
         hlsRef.current.destroy();
+        hlsRef.current = null;
       }
     };
-  }, [streamInfo, initialProgress, saveProgress]);
+  }, [activeMode, streamInfo, initialProgress, saveProgress]);
 
-  // ============================================================================
-  // Periodic Heartbeat Progress Sync (Every 10 Seconds)
-  // ============================================================================
+  // Periodic HLS Heartbeat
   useEffect(() => {
+    if (activeMode !== 'hls') return;
     const interval = setInterval(() => {
       if (isPlaying && videoRef.current) {
         const current = videoRef.current.currentTime;
-        // Save progress if advanced by at least 5 seconds
         if (Math.abs(current - lastSavedTimeRef.current) >= 5) {
           saveProgress(current, videoRef.current.duration);
         }
@@ -178,10 +215,10 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [isPlaying, saveProgress]);
+  }, [activeMode, isPlaying, saveProgress]);
 
   // ============================================================================
-  // Player Video Event Handlers
+  // Video Event Handlers for HLS Mode
   // ============================================================================
   const handleTimeUpdate = () => {
     if (videoRef.current) {
@@ -193,7 +230,6 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
   const handlePlayState = (playing) => {
     setIsPlaying(playing);
     if (!playing && videoRef.current) {
-      // Immediately save progress when user pauses
       saveProgress(videoRef.current.currentTime, videoRef.current.duration);
     }
   };
@@ -256,22 +292,20 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
 
   const handleQualityChange = (levelIndex) => {
     if (hlsRef.current) {
-      hlsRef.current.currentLevel = levelIndex; // -1 = Auto
+      hlsRef.current.currentLevel = levelIndex;
       setCurrentLevel(levelIndex);
       setShowQualityMenu(false);
     }
   };
 
-  // Autohide controls on inactivity
   const handleMouseMove = () => {
     setShowControls(true);
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) setShowControls(false);
-    }, 3500);
+      if (isPlaying || activeMode === 'official') setShowControls(false);
+    }, 4000);
   };
 
-  // Format seconds to mm:ss or hh:mm:ss
   const formatTime = (secs) => {
     if (isNaN(secs)) return '00:00';
     const h = Math.floor(secs / 3600);
@@ -289,231 +323,288 @@ export const Player = ({ movie, streamInfo, initialProgress = 0 }) => {
       onMouseMove={handleMouseMove}
       className="relative h-screen w-screen select-none overflow-hidden bg-black font-sans text-white"
     >
-      {/* Video Element */}
-      <video
-        ref={videoRef}
-        onClick={togglePlay}
-        onTimeUpdate={handleTimeUpdate}
-        onPlay={() => handlePlayState(true)}
-        onPause={() => handlePlayState(false)}
-        onWaiting={() => setIsBuffering(true)}
-        onPlaying={() => setIsBuffering(false)}
-        className="h-full w-full object-contain cursor-pointer"
-        playsInline
-      />
+      {/* =========================================================================
+          MODE 1: AUTHENTIC OFFICIAL STUDIO VIDEO PLAYER (Verified YouTube Stream)
+          ========================================================================= */}
+      {activeMode === 'official' && effectiveTrailerKey ? (
+        <div className="relative h-full w-full bg-black flex items-center justify-center">
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${effectiveTrailerKey}?autoplay=1&mute=0&controls=1&enablejsapi=1&rel=0&modestbranding=1&iv_load_policy=3&playsinline=1`}
+            title={`${movie?.title || 'Cinema'} Official Stream`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            className="h-full w-full border-0 shadow-2xl"
+          />
+        </div>
+      ) : (
+        /* =========================================================================
+            MODE 2: ADAPTIVE BITRATE HLS VIDEO PLAYER (Hls.js + Custom Controls)
+            ========================================================================= */
+        <div className="relative h-full w-full">
+          <video
+            ref={videoRef}
+            onClick={togglePlay}
+            onTimeUpdate={handleTimeUpdate}
+            onPlay={() => handlePlayState(true)}
+            onPause={() => handlePlayState(false)}
+            onWaiting={() => setIsBuffering(true)}
+            onPlaying={() => setIsBuffering(false)}
+            className="h-full w-full object-contain cursor-pointer"
+            playsInline
+          />
 
-      {/* Buffering Spinner */}
-      {isBuffering && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#E50914] border-t-transparent shadow-lg" />
+          {isBuffering && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30">
+              <div className="h-16 w-16 animate-spin rounded-full border-4 border-[#E50914] border-t-transparent shadow-lg" />
+            </div>
+          )}
         </div>
       )}
 
-      {/* Top Bar (Back Button + Title) */}
+      {/* =========================================================================
+          FLOATING TOP HEADER (Back, Title, Stream Type, Engine Mode Switcher)
+          ========================================================================= */}
       <div
-        className={`absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-6 transition-opacity duration-300 bg-gradient-to-b from-black/80 to-transparent ${
-          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        className={`absolute top-0 left-0 right-0 z-30 flex items-center justify-between p-4 sm:p-6 transition-opacity duration-300 bg-gradient-to-b from-black/90 via-black/50 to-transparent ${
+          showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
+        {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
           aria-label="Back to browsing"
-          className="flex items-center gap-2 text-white transition-transform hover:scale-110"
+          className="flex items-center gap-2 rounded-full bg-black/60 hover:bg-neutral-800 text-white px-3.5 py-2 backdrop-blur-xl border border-white/15 transition-all hover:scale-105 active:scale-95 shadow-xl cursor-pointer"
         >
-          <ArrowLeft className="h-7 w-7" />
-          <span className="text-sm font-semibold tracking-wide hidden sm:inline">Back</span>
+          <ArrowLeft className="h-5 w-5" />
+          <span className="text-xs sm:text-sm font-bold tracking-wide hidden sm:inline">Back</span>
         </button>
 
-        <div className="text-center">
-          <h2 className="text-lg sm:text-xl font-bold">{movie?.title || 'StreamVerse Player'}</h2>
-          <span className="rounded bg-neutral-800/80 px-2 py-0.5 text-[10px] font-semibold text-neutral-400">
-            CC Open-Source HLS Demo Stream
-          </span>
+        {/* Center Title & Engine Badges */}
+        <div className="text-center px-4 max-w-sm sm:max-w-md md:max-w-xl">
+          <h2 className="text-sm sm:text-lg md:text-xl font-black text-white drop-shadow truncate">
+            {movie?.title || 'Netflix Player'}
+          </h2>
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-1">
+            <span className={`rounded-full px-2.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow ${
+              activeMode === 'official' ? 'bg-[#E50914] text-white' : 'bg-cyan-500 text-black'
+            }`}>
+              {activeMode === 'official' ? 'Official Studio Video' : 'Adaptive HLS Stream'}
+            </span>
+            <span className="hidden sm:inline-block rounded-full bg-neutral-800/80 px-2 py-0.5 text-[9px] font-bold text-neutral-300 border border-white/10">
+              4K Ultra HD • Dolby Atmos
+            </span>
+          </div>
         </div>
 
-        <div className="w-10" /> {/* Balancer */}
+        {/* Right Controls: Mode Toggle & Fullscreen */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {effectiveTrailerKey && (
+            <button
+              onClick={() => setActiveMode((prev) => (prev === 'official' ? 'hls' : 'official'))}
+              title={activeMode === 'official' ? 'Switch to Adaptive Bitrate HLS Stream' : 'Switch to Official Studio Video'}
+              className="flex items-center gap-1.5 rounded-full bg-neutral-900/80 hover:bg-white text-white hover:text-black px-3 py-1.5 text-xs font-bold backdrop-blur-xl border border-white/20 transition-all hover:scale-105 active:scale-95 shadow-xl cursor-pointer"
+            >
+              {activeMode === 'official' ? (
+                <>
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  <span className="hidden md:inline">Adaptive HLS Stream</span>
+                  <span className="md:hidden">HLS</span>
+                </>
+              ) : (
+                <>
+                  <Film className="h-3.5 w-3.5 text-red-500" />
+                  <span className="hidden md:inline">Official Movie Video</span>
+                  <span className="md:hidden">Official</span>
+                </>
+              )}
+            </button>
+          )}
+
+          <button
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/60 hover:bg-neutral-800 text-white backdrop-blur-xl border border-white/15 transition-all hover:scale-105 active:scale-95 shadow-xl cursor-pointer"
+          >
+            {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
-      {/* Bottom Controls Bar */}
-      <div
-        className={`absolute bottom-0 left-0 right-0 z-30 space-y-3 p-4 sm:p-6 transition-opacity duration-300 bg-gradient-to-t from-black/90 via-black/50 to-transparent ${
-          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-      >
-        {/* Timeline Seek Bar */}
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-neutral-300 font-mono">{formatTime(currentTime)}</span>
-          <input
-            type="range"
-            min={0}
-            max={duration || 100}
-            value={currentTime}
-            onChange={handleSeek}
-            aria-label="Video seek slider"
-            className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-600 accent-[#E50914] transition-all hover:h-2.5"
-          />
-          <span className="text-xs text-neutral-300 font-mono">{formatTime(duration)}</span>
-        </div>
-
-        {/* Buttons Control Row */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 sm:gap-6">
-            {/* Play/Pause */}
-            <button
-              onClick={togglePlay}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-              className="text-white hover:text-neutral-300 transition-transform hover:scale-110"
-            >
-              {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 fill-current" />}
-            </button>
-
-            {/* Skip Back 10s */}
-            <button
-              onClick={() => skipTime(-10)}
-              aria-label="Skip back 10 seconds"
-              className="text-white hover:text-neutral-300 transition-transform hover:scale-110"
-            >
-              <RotateCcw className="h-5 w-5" />
-            </button>
-
-            {/* Skip Forward 10s */}
-            <button
-              onClick={() => skipTime(10)}
-              aria-label="Skip forward 10 seconds"
-              className="text-white hover:text-neutral-300 transition-transform hover:scale-110"
-            >
-              <RotateCw className="h-5 w-5" />
-            </button>
-
-            {/* Volume + Slider */}
-            <div className="flex items-center gap-2 group/volume">
-              <button
-                onClick={toggleMute}
-                aria-label={isMuted ? 'Unmute' : 'Mute'}
-                className="text-white hover:text-neutral-300"
-              >
-                {isMuted || volume === 0 ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={isMuted ? 0 : volume}
-                onChange={handleVolumeChange}
-                aria-label="Volume slider"
-                className="h-1 w-16 sm:w-20 cursor-pointer appearance-none rounded-lg bg-neutral-600 accent-white"
-              />
-            </div>
+      {/* =========================================================================
+          BOTTOM CONTROLS BAR (Only active in HLS Adaptive Mode)
+          ========================================================================= */}
+      {activeMode === 'hls' && (
+        <div
+          className={`absolute bottom-0 left-0 right-0 z-30 space-y-3 p-4 sm:p-6 transition-opacity duration-300 bg-gradient-to-t from-black/95 via-black/60 to-transparent ${
+            showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          {/* Timeline Seek Bar */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-neutral-300 font-mono">{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={currentTime}
+              onChange={handleSeek}
+              aria-label="Video seek slider"
+              className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-neutral-600 accent-[#E50914] transition-all hover:h-2.5"
+            />
+            <span className="text-xs text-neutral-300 font-mono">{formatTime(duration)}</span>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Audio & Subtitles Selector */}
-            <div className="relative">
+          {/* Buttons Control Row */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 sm:gap-6">
+              {/* Play/Pause */}
               <button
-                onClick={() => {
-                  setShowAudioMenu((prev) => !prev);
-                  setShowQualityMenu(false);
-                }}
-                aria-label="Audio and subtitles"
-                className="flex items-center gap-1.5 text-sm font-semibold text-neutral-300 hover:text-white transition-colors"
+                onClick={togglePlay}
+                aria-label={isPlaying ? 'Pause' : 'Play'}
+                className="text-white hover:text-neutral-300 transition-transform hover:scale-110"
               >
-                <Globe className="h-5 w-5" />
-                <span className="hidden sm:inline text-xs">{selectedAudio.split(' ')[0]}</span>
+                {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 fill-current" />}
               </button>
 
-              {showAudioMenu && (
-                <div className="absolute bottom-10 right-0 mb-2 w-64 rounded-xl bg-neutral-900/95 backdrop-blur-2xl p-3 shadow-2xl border border-neutral-700 text-xs z-50">
-                  <div className="mb-2 pb-1 border-b border-neutral-800">
-                    <span className="font-bold text-neutral-400 uppercase tracking-wider text-[10px]">Audio Language</span>
-                    {['English [Original]', 'Japanese (Dolby Atmos)', 'Korean (5.1)', 'Spanish', 'Hindi'].map((aud) => (
-                      <button
-                        key={aud}
-                        onClick={() => {
-                          setSelectedAudio(aud);
-                          setShowAudioMenu(false);
-                        }}
-                        className={`w-full py-1 text-left px-2 rounded hover:bg-neutral-800 transition-colors ${
-                          selectedAudio === aud ? 'text-[#E50914] font-bold' : 'text-neutral-300'
-                        }`}
-                      >
-                        {aud}
-                      </button>
-                    ))}
-                  </div>
+              {/* Skip Back 10s */}
+              <button
+                onClick={() => skipTime(-10)}
+                aria-label="Skip back 10 seconds"
+                className="text-white hover:text-neutral-300 transition-transform hover:scale-110"
+              >
+                <RotateCcw className="h-5 w-5" />
+              </button>
 
-                  <div>
-                    <span className="font-bold text-neutral-400 uppercase tracking-wider text-[10px]">Subtitles</span>
-                    {['Off', 'English [CC]', 'Spanish', 'French', 'Japanese', 'Korean'].map((sub) => (
-                      <button
-                        key={sub}
-                        onClick={() => {
-                          setSelectedSubtitle(sub);
-                          setShowAudioMenu(false);
-                        }}
-                        className={`w-full py-1 text-left px-2 rounded hover:bg-neutral-800 transition-colors ${
-                          selectedSubtitle === sub ? 'text-[#E50914] font-bold' : 'text-neutral-300'
-                        }`}
-                      >
-                        {sub}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Skip Forward 10s */}
+              <button
+                onClick={() => skipTime(10)}
+                aria-label="Skip forward 10 seconds"
+                className="text-white hover:text-neutral-300 transition-transform hover:scale-110"
+              >
+                <RotateCw className="h-5 w-5" />
+              </button>
+
+              {/* Volume + Slider */}
+              <div className="flex items-center gap-2 group/volume">
+                <button
+                  onClick={toggleMute}
+                  aria-label={isMuted ? 'Unmute' : 'Mute'}
+                  className="text-white hover:text-neutral-300"
+                >
+                  {isMuted || volume === 0 ? <VolumeX className="h-6 w-6" /> : <Volume2 className="h-6 w-6" />}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={isMuted ? 0 : volume}
+                  onChange={handleVolumeChange}
+                  aria-label="Volume slider"
+                  className="h-1 w-16 sm:w-20 cursor-pointer appearance-none rounded-lg bg-neutral-600 accent-white"
+                />
+              </div>
             </div>
 
-            {/* Quality Selector (HLS levels) */}
-            {levels.length > 0 && (
+            <div className="flex items-center gap-4">
+              {/* Audio & Subtitles Selector */}
               <div className="relative">
                 <button
-                  onClick={() => setShowQualityMenu((prev) => !prev)}
-                  aria-label="Quality settings"
-                  className="flex items-center gap-1 text-sm font-semibold text-neutral-300 hover:text-white"
+                  onClick={() => {
+                    setShowAudioMenu((prev) => !prev);
+                    setShowQualityMenu(false);
+                  }}
+                  aria-label="Audio and subtitles"
+                  className="flex items-center gap-1.5 text-sm font-semibold text-neutral-300 hover:text-white transition-colors"
                 >
-                  <Settings className="h-5 w-5" />
-                  <span className="hidden sm:inline">
-                    {currentLevel === -1 ? 'Auto' : `${levels[currentLevel]?.height || ''}p`}
-                  </span>
+                  <Globe className="h-5 w-5" />
+                  <span className="hidden sm:inline text-xs">{selectedAudio.split(' ')[0]}</span>
                 </button>
 
-                {showQualityMenu && (
-                  <div className="absolute bottom-10 right-0 mb-2 w-32 rounded bg-neutral-900/95 py-2 shadow-2xl border border-neutral-700 text-xs">
-                    <button
-                      onClick={() => handleQualityChange(-1)}
-                      className={`w-full px-4 py-1.5 text-left hover:bg-neutral-800 ${
-                        currentLevel === -1 ? 'text-[#E50914] font-bold' : 'text-neutral-300'
-                      }`}
-                    >
-                      Auto
-                    </button>
-                    {levels.map((lvl, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleQualityChange(idx)}
-                        className={`w-full px-4 py-1.5 text-left hover:bg-neutral-800 ${
-                          currentLevel === idx ? 'text-[#E50914] font-bold' : 'text-neutral-300'
-                        }`}
-                      >
-                        {lvl.height}p ({Math.round(lvl.bitrate / 1000)}k)
-                      </button>
-                    ))}
+                {showAudioMenu && (
+                  <div className="absolute bottom-10 right-0 mb-2 w-64 rounded-xl bg-neutral-900/95 backdrop-blur-2xl p-3 shadow-2xl border border-neutral-700 text-xs z-50">
+                    <div className="mb-2 pb-1 border-b border-neutral-800">
+                      <span className="font-bold text-neutral-400 uppercase tracking-wider text-[10px]">Audio Language</span>
+                      {['English [Original]', 'Japanese (Dolby Atmos)', 'Korean (5.1)', 'Spanish', 'Hindi'].map((aud) => (
+                        <button
+                          key={aud}
+                          onClick={() => {
+                            setSelectedAudio(aud);
+                            setShowAudioMenu(false);
+                          }}
+                          className={`w-full py-1 text-left px-2 rounded hover:bg-neutral-800 transition-colors ${
+                            selectedAudio === aud ? 'text-[#E50914] font-bold' : 'text-neutral-300'
+                          }`}
+                        >
+                          {aud}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div>
+                      <span className="font-bold text-neutral-400 uppercase tracking-wider text-[10px]">Subtitles</span>
+                      {['Off', 'English [CC]', 'Spanish', 'French', 'Japanese', 'Korean'].map((sub) => (
+                        <button
+                          key={sub}
+                          onClick={() => {
+                            setSelectedSubtitle(sub);
+                            setShowAudioMenu(false);
+                          }}
+                          className={`w-full py-1 text-left px-2 rounded hover:bg-neutral-800 transition-colors ${
+                            selectedSubtitle === sub ? 'text-[#E50914] font-bold' : 'text-neutral-300'
+                          }`}
+                        >
+                          {sub}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-            )}
 
-            {/* Fullscreen Button */}
-            <button
-              onClick={toggleFullscreen}
-              aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-              className="text-white hover:text-neutral-300 transition-transform hover:scale-110"
-            >
-              {isFullscreen ? <Minimize className="h-6 w-6" /> : <Maximize className="h-6 w-6" />}
-            </button>
+              {/* Quality Selector (HLS levels) */}
+              {levels.length > 0 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowQualityMenu((prev) => !prev)}
+                    aria-label="Quality settings"
+                    className="flex items-center gap-1 text-sm font-semibold text-neutral-300 hover:text-white"
+                  >
+                    <Settings className="h-5 w-5" />
+                    <span className="hidden sm:inline">
+                      {currentLevel === -1 ? 'Auto' : `${levels[currentLevel]?.height || ''}p`}
+                    </span>
+                  </button>
+
+                  {showQualityMenu && (
+                    <div className="absolute bottom-10 right-0 mb-2 w-32 rounded bg-neutral-900/95 py-2 shadow-2xl border border-neutral-700 text-xs">
+                      <button
+                        onClick={() => handleQualityChange(-1)}
+                        className={`w-full px-4 py-1.5 text-left hover:bg-neutral-800 ${
+                          currentLevel === -1 ? 'text-[#E50914] font-bold' : 'text-neutral-300'
+                        }`}
+                      >
+                        Auto
+                      </button>
+                      {levels.map((lvl, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleQualityChange(idx)}
+                          className={`w-full px-4 py-1.5 text-left hover:bg-neutral-800 ${
+                            currentLevel === idx ? 'text-[#E50914] font-bold' : 'text-neutral-300'
+                          }`}
+                        >
+                          {lvl.height}p ({Math.round(lvl.bitrate / 1000)}k)
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

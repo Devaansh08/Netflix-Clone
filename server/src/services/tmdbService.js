@@ -92,6 +92,17 @@ export const normalizeMovie = (item) => {
   const clipIndex = Math.abs(item.id % VERIFIED_PREVIEW_STREAMS.length);
   const streamUrl = item.stream_url || item.video_clip_url || VERIFIED_PREVIEW_STREAMS[clipIndex];
 
+  const episodes = (item.episodes || []).map((ep) => ({
+    episodeNumber: ep.episode_number || ep.episodeNumber || 1,
+    title: ep.title || `Episode ${ep.episode_number || 1}`,
+    overview: ep.overview || '',
+    duration: ep.duration || '48m',
+    streamUrl: ep.stream_url || ep.streamUrl || streamUrl,
+    stillPath: resolveImageUrl(ep.still_path || ep.stillPath || item.backdrop_path, IMAGE_BASE_W500)
+  }));
+
+  const isTvSeries = item.media_type === 'tv' || !!item.first_air_date || !!item.seasons;
+
   return {
     id: item.id,
     title: item.title || item.name || 'Untitled',
@@ -103,7 +114,10 @@ export const normalizeMovie = (item) => {
     releaseDate: item.release_date || item.first_air_date || null,
     genres: genreList,
     genreIds: item.genre_ids || [],
-    mediaType: item.media_type || (item.first_air_date ? 'tv' : 'movie'),
+    mediaType: isTvSeries ? 'tv' : 'movie',
+    seasons: item.seasons || (isTvSeries ? 1 : null),
+    episodesCount: item.episodes_count || item.episodesCount || (episodes.length > 0 ? episodes.length : (isTvSeries ? 10 : null)),
+    episodes,
     originalLanguage: langCode,
     languageLabel: langName,
     audioLanguages: [langName, 'English', 'Spanish'].filter((v, i, a) => a.indexOf(v) === i),
@@ -113,7 +127,9 @@ export const normalizeMovie = (item) => {
       ? '18+ | Explicit Violence, Intense Action, Strong Language'
       : 'PG-13 | Sci-Fi Violence, Moderate Language, Mild Thematic Elements',
     videoClipUrl: streamUrl,
-    streamUrl
+    streamUrl,
+    trailerKey: item.trailer_key || item.trailerKey || null,
+    trailerUrl: (item.trailer_key || item.trailerKey) ? `https://www.youtube.com/watch?v=${item.trailer_key || item.trailerKey}` : null
   };
 };
 
@@ -159,7 +175,7 @@ export const REAL_TMDB_BENCHMARK_CATALOG = [
     title: 'Dune: Part Two',
     overview: 'Follow the mythic journey of Paul Atreides as he unites with Chani and the Fremen while on a path of revenge against the conspirators who destroyed his family.',
     poster_path: '/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
-    backdrop_path: '/xOMo8BRK7PfcJv9JCnx7s5hj0x2.jpg',
+    backdrop_path: '/uhUO7vQQKvCTfQWubOt5MAKokbL.jpg',
     vote_average: 8.2,
     vote_count: 5500,
     release_date: '2024-02-27',
@@ -209,7 +225,7 @@ export const REAL_TMDB_BENCHMARK_CATALOG = [
     title: 'Your Name.',
     overview: 'High schoolers Mitsuha and Taki are complete strangers living separate lives until they suddenly switch bodies overnight.',
     poster_path: '/vfJFJPepRKapMd5G2ro7klIRysq.jpg',
-    backdrop_path: '/dIWwZWnnWoH2iqIkGCqiZsag998.jpg',
+    backdrop_path: 'https://upload.wikimedia.org/wikipedia/en/0/0b/Your_Name_poster.png',
     vote_average: 8.5,
     vote_count: 11000,
     release_date: '2016-08-26',
@@ -225,7 +241,7 @@ export const REAL_TMDB_BENCHMARK_CATALOG = [
     title: 'Demon Slayer: Mugen Train',
     overview: 'Tanjiro and the group have completed their rehabilitation training at the Butterfly Mansion, and they arrive to their next mission on the Mugen Train.',
     poster_path: '/h8Rb9gBr48ODIwYUttZNYeMWeUU.jpg',
-    backdrop_path: '/xPpXYnCWcuumYnG7wvgudNmRPVU.jpg',
+    backdrop_path: 'https://upload.wikimedia.org/wikipedia/en/2/21/Kimetsu_no_Yaiba_Mugen_Ressha_Hen_Poster.jpg',
     vote_average: 8.3,
     vote_count: 4000,
     release_date: '2020-10-16',
@@ -257,7 +273,7 @@ export const REAL_TMDB_BENCHMARK_CATALOG = [
     title: 'Spider-Man: Into the Spider-Verse',
     overview: 'Teen Miles Morales becomes the new Spider-Man, and must join with five alternate dimension counterparts to stop a threat to all reality.',
     poster_path: '/iiZZdoQBEYBv6id8su7ImL0oCbD.jpg',
-    backdrop_path: '/7d6f0V948wpox6kCzkT8j2e4u1c.jpg',
+    backdrop_path: 'https://upload.wikimedia.org/wikipedia/en/f/fa/Spider-Man_Into_the_Spider-Verse_poster.png',
     vote_average: 8.4,
     vote_count: 14000,
     release_date: '2018-12-01',
@@ -307,7 +323,7 @@ export const REAL_TMDB_BENCHMARK_CATALOG = [
     title: 'John Wick: Chapter 4',
     overview: 'With the price on his head ever increasing, John Wick uncovers a path to defeating The High Table. But before he can earn his freedom, Wick must face off against a new enemy.',
     poster_path: '/7I6VUdPj6tQECNHdviJkUHD2u89.jpg',
-    backdrop_path: '/7I6VUdPj6tQECNHdviJkUHD2389.jpg',
+    backdrop_path: 'https://upload.wikimedia.org/wikipedia/en/d/d0/John_Wick_-_Chapter_4_promotional_poster.jpg',
     vote_average: 7.7,
     vote_count: 6200,
     release_date: '2023-03-22',
@@ -323,7 +339,7 @@ export const REAL_TMDB_BENCHMARK_CATALOG = [
     title: 'Money Heist (La Casa de Papel)',
     overview: 'To carry out the biggest heist in history, a mysterious man called The Professor recruits a band of eight robbers who have a single characteristic: none of them has anything to lose.',
     poster_path: '/reEMJA1uzscCbkpeRJeTT2bjqUp.jpg',
-    backdrop_path: '/gFZriCkpJYsApP0ugYeJhL2gJL5.jpg',
+    backdrop_path: 'https://static.tvmaze.com/uploads/images/original_untouched/431/1077672.jpg',
     vote_average: 8.2,
     vote_count: 18500,
     release_date: '2017-05-02',
@@ -487,7 +503,7 @@ export const REAL_TMDB_BENCHMARK_CATALOG = [
     title: 'Parasite',
     overview: 'All unemployed, Ki-taeks family takes peculiar interest in the wealthy and glamorous Parks for their livelihood until they get entangled in an unexpected incident.',
     poster_path: '/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg',
-    backdrop_path: '/hiKmp9Op9Dp4936d04n28J5U0qC.jpg',
+    backdrop_path: '/TU9NIjwzjoKPwQHoHshkFcQUCG.jpg',
     vote_average: 8.5,
     vote_count: 18000,
     release_date: '2019-05-30',
@@ -553,7 +569,7 @@ export const REAL_TMDB_BENCHMARK_CATALOG = [
     title: 'The Matrix',
     overview: 'Set in the 22nd century, The Matrix tells the story of a computer hacker who joins a group of underground insurgents fighting the vast and powerful computers who now rule the earth.',
     poster_path: '/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg',
-    backdrop_path: '/ncEsesgOJDNrTUED89vgY9SuCJV.jpg',
+    backdrop_path: '/fNG7i7RqMErkcqhohV2a6cV1Ehy.jpg',
     vote_average: 8.2,
     vote_count: 25000,
     release_date: '1999-03-30',
@@ -619,7 +635,7 @@ export const REAL_TMDB_BENCHMARK_CATALOG = [
     title: 'Blade Runner 2049',
     overview: 'Thirty years after the events of the first film, a new blade runner, LAPD Officer K, unearths a long-buried secret that has the potential to plunge what is left of society into chaos.',
     poster_path: '/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg',
-    backdrop_path: '/ilRyAZvyhGgsz4bFv0f8Lh2mK1i.jpg',
+    backdrop_path: 'https://upload.wikimedia.org/wikipedia/en/9/9b/Blade_Runner_2049_poster.png',
     vote_average: 8.0,
     vote_count: 13000,
     release_date: '2017-10-04',
@@ -629,6 +645,425 @@ export const REAL_TMDB_BENCHMARK_CATALOG = [
     maturity_rating: '18+',
     trailer_key: 'gCcx85zbxz4',
     stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8'
+  },
+
+  // --- BINGE-WORTHY TV SERIES & SHOWS ---
+  {
+    id: 60574,
+    title: 'Peaky Blinders',
+    overview: 'A gangster family epic set in 1919 Birmingham, England and centered on a gang who sew razor blades in the peaks of their caps, and their fierce boss Tommy Shelby, who means to move up in the world.',
+    poster_path: '/vUUqzWa2LnHIVqkaKVlVGkVcZIW.jpg',
+    backdrop_path: '/vUUqzWa2LnHIVqkaKVlVGkVcZIW.jpg',
+    vote_average: 8.8,
+    vote_count: 9200,
+    first_air_date: '2013-09-12',
+    genre_ids: [18, 80],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 5,
+    episodes_count: 36,
+    maturity_rating: '18+',
+    trailer_key: 'oVzVdvGIC7U',
+    stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+    episodes: [
+      { episode_number: 1, title: 'Episode 1', duration: '58m', overview: 'Thomas Shelby recognizes an opportunity when a crate of guns goes missing from a local arms factory.', stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8' },
+      { episode_number: 2, title: 'Episode 2', duration: '57m', overview: 'Thomas fixes a horse race, angering the kingpin Billy Kimber. Inspector Campbell carries out a vicious raid.', stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' },
+      { episode_number: 3, title: 'Episode 3', duration: '55m', overview: 'Thomas goes to the races with Grace in an effort to seduce Billy Kimber and gain legal betting pitches.', stream_url: 'https://media.w3.org/2010/05/sintel/trailer.mp4' }
+    ]
+  },
+  {
+    id: 1396,
+    title: 'Breaking Bad',
+    overview: 'Walter White, a New Mexico chemistry teacher, is diagnosed with Stage III cancer and given a prognosis of two years left to live. He chooses to enter the dangerous world of drugs and crime who produces and sells methamphetamine with his former student, Jesse Pinkman.',
+    poster_path: '/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg',
+    backdrop_path: '/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg',
+    vote_average: 8.9,
+    vote_count: 14000,
+    first_air_date: '2008-01-20',
+    genre_ids: [18, 80],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 5,
+    episodes_count: 62,
+    maturity_rating: '18+',
+    trailer_key: 'HhesaQXLuRY',
+    stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+    episodes: [
+      { episode_number: 1, title: 'Pilot', duration: '58m', overview: 'When an unassuming high school chemistry teacher is diagnosed with terminal lung cancer, he resorts to manufacturing methamphetamine with a former student.', stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8' },
+      { episode_number: 2, title: "Cat's in the Bag...", duration: '48m', overview: 'Walt and Jesse attempt to dispose of two bodies in the RV, which becomes increasingly complicated.', stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' },
+      { episode_number: 3, title: "...And the Bag's in the River", duration: '48m', overview: 'Walt and Jesse clean up after the bathtub incident; Walt faces a moral dilemma with Krazy-8.', stream_url: 'https://media.w3.org/2010/05/sintel/trailer.mp4' },
+      { episode_number: 4, title: 'Cancer Man', duration: '48m', overview: 'Walt tells the rest of the family about his cancer diagnosis at a weekend barbecue.', stream_url: 'https://media.w3.org/2010/05/bunny/trailer.mp4' },
+      { episode_number: 5, title: 'Gray Matter', duration: '48m', overview: 'Walt and Skyler attend a former colleague\'s birthday party where Walt is offered a job with health insurance.', stream_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' }
+    ]
+  },
+  {
+    id: 66732,
+    title: 'Stranger Things',
+    overview: 'When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces and one strange little girl with telekinetic powers.',
+    poster_path: '/49WJfeN0moxb9IPfGn8AIqMGskD.jpg',
+    backdrop_path: '/56v2KjBlU4XaOv9rVYEQypROD7P.jpg',
+    vote_average: 8.6,
+    vote_count: 17000,
+    first_air_date: '2016-07-15',
+    genre_ids: [878, 18, 9648],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 4,
+    episodes_count: 34,
+    maturity_rating: '16+',
+    trailer_key: 'b9EkMc79ZSU',
+    stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4',
+    episodes: [
+      { episode_number: 1, title: 'Chapter One: The Vanishing of Will Byers', duration: '49m', overview: 'On his way home from a friend\'s house, young Will sees something terrifying. Nearby, a sinister secret lurks in the depths of a government lab.', stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' },
+      { episode_number: 2, title: 'Chapter Two: The Weirdo on Maple Street', duration: '56m', overview: 'Lucas, Mike and Dustin try to talk to the girl they found in the woods. Hopper questions an anxious Joyce about an unsettling phone call.', stream_url: 'https://media.w3.org/2010/05/sintel/trailer.mp4' },
+      { episode_number: 3, title: 'Chapter Three: Holly, Jolly', duration: '52m', overview: 'An increasingly concerned Nancy looks for Barb and finds out what Jonathan\'s been up to. Joyce is convinced Will is trying to talk to her.', stream_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
+      { episode_number: 4, title: 'Chapter Four: The Body', duration: '51m', overview: 'Refusing to believe Will is dead, Joyce tries to connect with her son. The boys give Eleven a makeover.', stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8' }
+    ]
+  },
+  {
+    id: 1399,
+    title: 'Game of Thrones',
+    overview: 'Seven noble families fight for control of the mythical land of Westeros. Friction between the houses leads to full-scale war. All while a very ancient evil awakens in the farthest north.',
+    poster_path: '/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg',
+    backdrop_path: '/2OMB0ynKlyIenMJWI2Dy9IWT4c.jpg',
+    vote_average: 8.4,
+    vote_count: 23000,
+    first_air_date: '2011-04-17',
+    genre_ids: [18, 14, 28],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 8,
+    episodes_count: 73,
+    maturity_rating: '18+',
+    trailer_key: 'KPLWWIOCOOQ',
+    stream_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+    episodes: [
+      { episode_number: 1, title: 'Winter Is Coming', duration: '62m', overview: 'Lord Eddard Stark is torn between his family and an old friend when asked to serve at King Robert\'s side.', stream_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
+      { episode_number: 2, title: 'The Kingsroad', duration: '56m', overview: 'While Bran recovers from his fall, Ned leaves with his daughters for King\'s Landing. Jon Snow travels north.', stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8' },
+      { episode_number: 3, title: 'Lord Snow', duration: '58m', overview: 'Ned Stark arrives in King\'s Landing and discovers the Crown\'s shocking profligacy.', stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' }
+    ]
+  },
+  {
+    id: 93405,
+    title: 'Squid Game',
+    overview: 'Hundreds of cash-strapped players accept a strange invitation to compete in children\'s games. Inside, a tempting prize awaits with deadly high stakes.',
+    poster_path: '/uu4TgyyW259aOZHN0Ew4TEfjnUG.jpg',
+    backdrop_path: '/z59kJfcElR9eHO9rJbWp4qWMuee.jpg',
+    vote_average: 8.3,
+    vote_count: 14000,
+    first_air_date: '2021-09-17',
+    genre_ids: [18, 9648, 53],
+    original_language: 'ko',
+    media_type: 'tv',
+    seasons: 2,
+    episodes_count: 9,
+    maturity_rating: '18+',
+    trailer_key: 'oqxAJKy0ii4',
+    stream_url: 'https://media.w3.org/2010/05/bunny/trailer.mp4',
+    episodes: [
+      { episode_number: 1, title: 'Red Light, Green Light', duration: '60m', overview: 'Hoping to win easy money, a desperate Gi-hun agrees to take part in an enigmatic game. Soon, round one becomes fatal.', stream_url: 'https://media.w3.org/2010/05/bunny/trailer.mp4' },
+      { episode_number: 2, title: 'Hell', duration: '63m', overview: 'Split on whether to continue or quit, the group holds a vote. But their real-world realities prove just as unforgiving.', stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' },
+      { episode_number: 3, title: 'The Man with the Umbrella', duration: '54m', overview: 'A few players enter the next round with hidden advantages. Meanwhile, Jun-ho infiltrates the game facility.', stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8' }
+    ]
+  },
+  {
+    id: 94605,
+    title: 'Arcane',
+    overview: 'Amid the stark discord of twin cities Piltover and Zaun, two sisters fight on rival sides of a war between magic technologies and incompatible convictions.',
+    poster_path: '/fqldf2t8ztc9aiwn3k6mlX3tvRT.jpg',
+    backdrop_path: '/fqldf2t8ztc9aiwn3k6mlX3tvRT.jpg',
+    vote_average: 8.7,
+    vote_count: 4200,
+    first_air_date: '2021-11-06',
+    genre_ids: [16, 878, 14, 28],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 2,
+    episodes_count: 18,
+    maturity_rating: '16+',
+    trailer_key: 'fXmAurh012s',
+    stream_url: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
+    episodes: [
+      { episode_number: 1, title: 'Welcome to the Playground', duration: '41m', overview: 'Orphaned sisters Vi and Powder bring trouble to the underground city after a heist in the posh upper city goes awry.', stream_url: 'https://media.w3.org/2010/05/sintel/trailer.mp4' },
+      { episode_number: 2, title: 'Some Mysteries Are Better Left Unsolved', duration: '41m', overview: 'Idealistic inventor Jayce faces expulsion for illegal magic experiments. Vi tries to protect Powder.', stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' },
+      { episode_number: 3, title: 'The Base Violence Necessary for Change', duration: '44m', overview: 'An epic showdown between old friends leads to tragedy that permanently changes the destiny of both sisters.', stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8' }
+    ]
+  },
+  {
+    id: 76479,
+    title: 'The Boys',
+    overview: 'A fun and irreverent take on what happens when superheroes—who are as popular as celebrities and as influential as politicians—abuse their superpowers rather than use them for good.',
+    poster_path: '/2zmTngn1tYC1AvfnrFLhxeD82hz.jpg',
+    backdrop_path: '/n6bUvigpRFqSwmPp1m2YADdbRBc.jpg',
+    vote_average: 8.5,
+    vote_count: 9800,
+    first_air_date: '2019-07-26',
+    genre_ids: [878, 28, 18],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 4,
+    episodes_count: 32,
+    maturity_rating: '18+',
+    trailer_key: '06rueu_fh30',
+    stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4',
+    episodes: [
+      { episode_number: 1, title: 'The Name of the Game', duration: '60m', overview: 'When a Supe kills the love of his life, A/V salesman Hughie Campbell teams up with Billy Butcher, a vigilante hell-bent on punishing corrupt Supes.', stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' },
+      { episode_number: 2, title: 'Cherry', duration: '55m', overview: 'The Boys acquire a superhero to interrogate, but holding a super-being hostage in an electronics store basement proves hazardous.', stream_url: 'https://media.w3.org/2010/05/sintel/trailer.mp4' }
+    ]
+  },
+  {
+    id: 70523,
+    title: 'Dark',
+    overview: 'A missing child sets four families on a frantic hunt for answers as they unearth a mind-bending mystery that spans three generations.',
+    poster_path: '/wiiyc3m6HKaQhFBYeuM7ySCNQsG.jpg',
+    backdrop_path: '/3jDXL4Xvj3AzDOF6UH1xeyHW8MH.jpg',
+    vote_average: 8.4,
+    vote_count: 6500,
+    first_air_date: '2017-12-01',
+    genre_ids: [878, 9648, 18],
+    original_language: 'de',
+    media_type: 'tv',
+    seasons: 3,
+    episodes_count: 26,
+    maturity_rating: '16+',
+    trailer_key: 'rrwycJ08PSA',
+    stream_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+    episodes: [
+      { episode_number: 1, title: 'Secrets', duration: '51m', overview: 'In 2019, a local boy\'s disappearance stokes fear in the residents of Winden, a small German town with a strange and tragic history.', stream_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
+      { episode_number: 2, title: 'Lies', duration: '44m', overview: 'When a grim discovery leaves police baffled, Ulrich seeks a search warrant for the nuclear power plant.', stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' }
+    ]
+  },
+  {
+    id: 87108,
+    title: 'Chernobyl',
+    overview: 'The true story of the 1986 catastrophic nuclear power plant accident in Ukraine, telling the emotional stories of the people who worked to save Europe from disaster.',
+    poster_path: '/dJFMw4g86jVOzfmGI2Q1NTE5h8c.jpg',
+    backdrop_path: '/wq3vuQzQgbS83zX3malAFWMsSwX.jpg',
+    vote_average: 8.6,
+    vote_count: 6100,
+    first_air_date: '2019-05-06',
+    genre_ids: [18, 36],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 1,
+    episodes_count: 5,
+    maturity_rating: '18+',
+    trailer_key: 's9APLXM9Ei8',
+    stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+    episodes: [
+      { episode_number: 1, title: '1:23:45', duration: '60m', overview: 'Plant workers and firefighters risk their lives to control a catastrophic April 1986 explosion at a Soviet nuclear power station.', stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8' },
+      { episode_number: 2, title: 'Please Remain Calm', duration: '65m', overview: 'With millions at risk, Ulana Khomyuk investigates the disaster while Legasov coordinates containment.', stream_url: 'https://media.w3.org/2010/05/sintel/trailer.mp4' }
+    ]
+  },
+  {
+    id: 105248,
+    title: 'Cyberpunk: Edgerunners',
+    overview: 'A street kid trying to survive in a technology and body modification-obsessed city of the future. Having everything to lose, he chooses to stay alive by becoming an edgerunner: a mercenary outlaw also known as a cyberpunk.',
+    poster_path: '/v3JuB15WybKmxDeT1hWdK3j6eSJ.jpg',
+    backdrop_path: '/v3JuB15WybKmxDeT1hWdK3j6eSJ.jpg',
+    vote_average: 8.6,
+    vote_count: 3200,
+    first_air_date: '2022-09-13',
+    genre_ids: [16, 878, 28],
+    original_language: 'ja',
+    media_type: 'tv',
+    seasons: 1,
+    episodes_count: 10,
+    maturity_rating: '18+',
+    trailer_key: 'JtqIas3bYhg',
+    stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4',
+    episodes: [
+      { episode_number: 1, title: 'Let You Down', duration: '24m', overview: 'Crushed by grief and high-tech corporate oppression, street student David Martinez installs military-grade cyberware into his spine.', stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' },
+      { episode_number: 2, title: 'Like a Boy', duration: '25m', overview: 'David tracks down Lucy on the NCART train and embarks on a dangerous underworld mission.', stream_url: 'https://media.w3.org/2010/05/bunny/trailer.mp4' }
+    ]
+  },
+
+  // --- POPCORN MANIA & NEW TRAILERS (Image 1 Console Highlights) ---
+  {
+    id: 48891,
+    title: 'Brooklyn Nine-Nine',
+    overview: 'A talented-but-carefree detective, a by-the-book police captain and their precinct colleagues in the NYPD 99th precinct solve crimes in Brooklyn.',
+    poster_path: 'https://static.tvmaze.com/uploads/images/original_untouched/402/1007484.jpg',
+    backdrop_path: 'https://static.tvmaze.com/uploads/images/original_untouched/235/587548.jpg',
+    vote_average: 8.2,
+    vote_count: 5300,
+    first_air_date: '2020-02-06',
+    genre_ids: [35, 80, 28],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 7,
+    episodes_count: 143,
+    maturity_rating: 'U/A 16+',
+    trailer_key: 'sEOuJ4z5aTc',
+    stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4',
+    episodes: [
+      { episode_number: 1, title: 'Pilot', duration: '22m', overview: 'Detective Jake Peralta is forced to respect the rules when strict Captain Ray Holt takes command.', stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' },
+      { episode_number: 2, title: 'The Tagger', duration: '22m', overview: 'Jake investigates graffiti on police cars, only to find the culprit is the Deputy Commissioner son.', stream_url: 'https://media.w3.org/2010/05/bunny/trailer.mp4' }
+    ]
+  },
+  {
+    id: 333339,
+    title: 'Ready Player One',
+    overview: 'When the creator of a virtual reality world called the OASIS dies, he releases a video in which he challenges all OASIS users to find his Easter Egg.',
+    poster_path: 'https://upload.wikimedia.org/wikipedia/en/7/74/Ready_Player_One_%28film%29.png',
+    backdrop_path: '/5a7lMDn3nAj2ByO0X1fg6BhUphR.jpg',
+    vote_average: 7.6,
+    vote_count: 15400,
+    release_date: '2018-03-28',
+    genre_ids: [878, 12, 28],
+    original_language: 'en',
+    media_type: 'movie',
+    maturity_rating: 'U/A 13+',
+    trailer_key: 'cSp1dM2Vj48',
+    stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8'
+  },
+  {
+    id: 62843,
+    title: 'Ash vs. Evil Dead',
+    overview: 'Ash has spent the last thirty years avoiding maturity and the terrors of the Evil Dead, but a Deadite plague threatens to destroy all of mankind.',
+    poster_path: 'https://static.tvmaze.com/uploads/images/original_untouched/145/363490.jpg',
+    backdrop_path: 'https://static.tvmaze.com/uploads/images/original_untouched/13/32915.jpg',
+    vote_average: 8.0,
+    vote_count: 2400,
+    first_air_date: '2018-02-25',
+    genre_ids: [35, 27, 28],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 3,
+    episodes_count: 30,
+    maturity_rating: '18+',
+    trailer_key: 'unnLgFEziI0',
+    stream_url: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
+    episodes: [
+      { episode_number: 1, title: 'El Jefe', duration: '42m', overview: 'Thirty years after facing down evil at a cabin in the woods, Ash inadvertently reawakens the Deadites.', stream_url: 'https://media.w3.org/2010/05/sintel/trailer.mp4' }
+    ]
+  },
+  {
+    id: 512195,
+    title: 'Red Notice',
+    overview: 'An Interpol agent tracks the worlds most wanted art thief, who becomes his reluctant partner in crime to catch an elusive crook who is always one step ahead.',
+    poster_path: 'https://upload.wikimedia.org/wikipedia/en/0/0c/Red_Notice_-_film_promotional_image.jpg',
+    backdrop_path: '/dK12GIdhGP6NPGFssK2Fh265jyr.jpg',
+    vote_average: 6.8,
+    vote_count: 5600,
+    release_date: '2021-11-04',
+    genre_ids: [28, 35, 80],
+    original_language: 'en',
+    media_type: 'movie',
+    maturity_rating: 'PG-13',
+    trailer_key: 'Pj0wz7zu3Ms',
+    stream_url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
+  },
+  {
+    id: 545609,
+    title: 'Extraction',
+    overview: 'Tyler Rake, a fearless black market mercenary, embarks on the most deadly extraction of his career when he is enlisted to rescue the kidnapped son of an imprisoned international crime lord.',
+    poster_path: 'https://upload.wikimedia.org/wikipedia/en/8/89/Extraction_%282020_film%29.png',
+    backdrop_path: '/1R6cvRtZgsYCkh8UFuWFN33xBP4.jpg',
+    vote_average: 7.3,
+    vote_count: 6200,
+    release_date: '2020-04-24',
+    genre_ids: [28, 53],
+    original_language: 'en',
+    media_type: 'movie',
+    maturity_rating: '18+',
+    trailer_key: 'L6P3nI6VnlY',
+    stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4'
+  },
+  {
+    id: 696806,
+    title: 'The Adam Project',
+    overview: 'After accidentally crash-landing in 2022, time-traveling fighter pilot Adam Reed teams up with his 12-year-old self on a mission to save the future.',
+    poster_path: 'https://upload.wikimedia.org/wikipedia/en/d/d7/The_Adam_Project_poster.png',
+    backdrop_path: '/wFjboE0aFZNbVOF05fzrka9Fqyx.jpg',
+    vote_average: 7.0,
+    vote_count: 4800,
+    release_date: '2022-03-11',
+    genre_ids: [878, 12, 35],
+    original_language: 'en',
+    media_type: 'movie',
+    maturity_rating: 'PG-13',
+    trailer_key: 'IE8HIsIrq4o',
+    stream_url: 'https://media.w3.org/2010/05/bunny/trailer.mp4'
+  },
+  {
+    id: 547016,
+    title: 'The Old Guard',
+    overview: 'Led by a warrior named Andy, a covert group of tight-knit mercenaries with a mysterious inability to die have fought to protect the mortal world for centuries.',
+    poster_path: 'https://upload.wikimedia.org/wikipedia/en/0/02/The_Old_Guard_2020_film_poster.png',
+    backdrop_path: '/m0ObOaJBerZ3Unc74l471ar8Iiy.jpg',
+    vote_average: 7.1,
+    vote_count: 4200,
+    release_date: '2020-07-10',
+    genre_ids: [28, 14],
+    original_language: 'en',
+    media_type: 'movie',
+    maturity_rating: '18+',
+    trailer_key: 'aK-X2HdGu_g',
+    stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8'
+  },
+  {
+    id: 85720,
+    title: 'Shadow and Bone',
+    overview: 'Dark forces conspire against orphan mapmaker Alina Starkov when she unleashes an extraordinary power that could change the fate of her war-torn world.',
+    poster_path: 'https://static.tvmaze.com/uploads/images/original_untouched/447/1118982.jpg',
+    backdrop_path: 'https://static.tvmaze.com/uploads/images/original_untouched/294/736659.jpg',
+    vote_average: 7.9,
+    vote_count: 3100,
+    first_air_date: '2021-04-23',
+    genre_ids: [18, 14, 12],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 2,
+    episodes_count: 16,
+    maturity_rating: 'U/A 16+',
+    trailer_key: 'b1WHQTbJ7vE',
+    stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4',
+    episodes: [
+      { episode_number: 1, title: 'A Searing Burst of Light', duration: '52m', overview: 'Unwilling to be separated from Mal, Alina joins a perilous journey into the Shadow Fold.', stream_url: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4' }
+    ]
+  },
+  {
+    id: 125988,
+    title: 'The Night Agent',
+    overview: 'While monitoring an emergency line, a vigilant FBI agent answers a call that plunges him into a deadly conspiracy involving a mole at the White House.',
+    poster_path: 'https://static.tvmaze.com/uploads/images/original_untouched/614/1536331.jpg',
+    backdrop_path: 'https://static.tvmaze.com/uploads/images/original_untouched/453/1133467.jpg',
+    vote_average: 7.7,
+    vote_count: 2800,
+    first_air_date: '2023-03-23',
+    genre_ids: [18, 80, 53],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 1,
+    episodes_count: 10,
+    maturity_rating: '18+',
+    trailer_key: 'rM1e-2q9w4M',
+    stream_url: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
+    episodes: [
+      { episode_number: 1, title: 'The Call', duration: '55m', overview: 'Peter Sutherland is on night duty in the White House basement when the emergency line suddenly rings.', stream_url: 'https://media.w3.org/2010/05/sintel/trailer.mp4' }
+    ]
+  },
+  {
+    id: 71912,
+    title: 'The Witcher',
+    overview: 'Geralt of Rivia, a mutated monster-hunter for hire, journeys toward his destiny in a turbulent world where people often prove more wicked than beasts.',
+    poster_path: 'https://static.tvmaze.com/uploads/images/original_untouched/594/1486674.jpg',
+    backdrop_path: 'https://static.tvmaze.com/uploads/images/original_untouched/174/436259.jpg',
+    vote_average: 8.0,
+    vote_count: 6500,
+    first_air_date: '2019-12-20',
+    genre_ids: [18, 14, 28],
+    original_language: 'en',
+    media_type: 'tv',
+    seasons: 3,
+    episodes_count: 24,
+    maturity_rating: '18+',
+    trailer_key: 'ndl1W4ltcmg',
+    stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+    episodes: [
+      { episode_number: 1, title: 'The End Beginning', duration: '61m', overview: 'Hostile townsfolk and a cunning mage greet Geralt in the town of Blaviken.', stream_url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8' }
+    ]
   }
 ];
 
@@ -642,11 +1077,23 @@ const sliceBenchmarkCatalog = (criteria = {}) => {
     list = list.filter((m) => m.maturity_rating !== '18+' && m.maturity_rating !== 'R');
   }
 
+  if (criteria.mediaType) {
+    if (criteria.mediaType === 'tv' || criteria.mediaType === 'series') {
+      list = list.filter((m) => m.media_type === 'tv');
+    } else if (criteria.mediaType === 'movie') {
+      list = list.filter((m) => m.media_type !== 'tv');
+    }
+  }
+
   if (criteria.genreId) {
     if (criteria.genreId === 'anime' || criteria.genreId === '16') {
       list = list.filter((m) => m.genre_ids?.includes(16) || m.original_language === 'ja');
     } else if (criteria.genreId === 'classics') {
       list = list.filter((m) => [19, 10331, 653].includes(m.id));
+    } else if (criteria.genreId === 'tv' || criteria.genreId === 'series') {
+      list = list.filter((m) => m.media_type === 'tv');
+    } else if (criteria.genreId === 'movies' || criteria.genreId === 'movie') {
+      list = list.filter((m) => m.media_type !== 'tv');
     } else {
       const gid = Number(criteria.genreId);
       list = list.filter((m) => m.genre_ids && m.genre_ids.includes(gid));
@@ -783,6 +1230,24 @@ export const tmdbService = {
         results: list.map(normalizeMovie)
       };
     }
+    if (genreId === 'tv' || genreId === 'series') {
+      const list = sliceBenchmarkCatalog({ mediaType: 'tv' });
+      return {
+        genreId: 'tv',
+        page: 1,
+        totalPages: 1,
+        results: list.map(normalizeMovie)
+      };
+    }
+    if (genreId === 'movies' || genreId === 'movie') {
+      const list = sliceBenchmarkCatalog({ mediaType: 'movie' });
+      return {
+        genreId: 'movies',
+        page: 1,
+        totalPages: 1,
+        results: list.map(normalizeMovie)
+      };
+    }
     const data = await fetchFromTMDB('/discover/movie', {
       with_genres: genreId,
       page,
@@ -793,6 +1258,16 @@ export const tmdbService = {
       page: data.page || page,
       totalPages: data.total_pages || 1,
       results: (data.results || []).map(normalizeMovie)
+    };
+  },
+
+  async getTvSeries(page = 1) {
+    const seriesList = sliceBenchmarkCatalog({ mediaType: 'tv' });
+    return {
+      category: 'tv-series',
+      page: 1,
+      totalPages: 1,
+      results: seriesList.map(normalizeMovie)
     };
   },
 
@@ -889,7 +1364,7 @@ export const tmdbService = {
     const benchmarkMatch = REAL_TMDB_BENCHMARK_CATALOG.find((m) => m.id === numericId);
 
     if (!env.TMDB_API_KEY || env.TMDB_API_KEY === 'your_tmdb_api_key_here') {
-      const key = benchmarkMatch?.trailer_key || 'YoHD9XEInc0';
+      const key = benchmarkMatch?.trailer_key || 'zSWdZVtXT7E';
       return {
         id: numericId,
         trailerKey: key,
@@ -898,21 +1373,31 @@ export const tmdbService = {
       };
     }
 
-    const cacheKey = `/movie/${id}/videos`;
+    const cacheKey = `/videos/${id}`;
     const cached = cache.get(cacheKey);
     if (cached) return cached;
 
     try {
-      const response = await apiClient.get(`/movie/${id}/videos`, {
-        params: { api_key: env.TMDB_API_KEY, language: 'en-US' }
-      });
+      let response;
+      try {
+        response = await apiClient.get(`/movie/${id}/videos`, {
+          params: { api_key: env.TMDB_API_KEY, language: 'en-US' }
+        });
+      } catch (err) {
+        // Fallback to /tv/${id}/videos for series like Peaky Blinders, Breaking Bad, etc.
+        response = await apiClient.get(`/tv/${id}/videos`, {
+          params: { api_key: env.TMDB_API_KEY, language: 'en-US' }
+        });
+      }
+
       const videos = response.data.results || [];
       const trailer =
         videos.find((v) => v.site === 'YouTube' && v.type === 'Trailer' && v.official) ||
         videos.find((v) => v.site === 'YouTube' && v.type === 'Trailer') ||
+        videos.find((v) => v.site === 'YouTube' && (v.type === 'Teaser' || v.type === 'Clip')) ||
         videos.find((v) => v.site === 'YouTube');
 
-      const key = trailer ? trailer.key : (benchmarkMatch?.trailer_key || 'YoHD9XEInc0');
+      const key = trailer ? trailer.key : (benchmarkMatch?.trailer_key || 'zSWdZVtXT7E');
       const result = {
         id: numericId,
         trailerKey: key,
@@ -923,7 +1408,7 @@ export const tmdbService = {
       cache.set(cacheKey, result);
       return result;
     } catch (error) {
-      const fallbackKey = benchmarkMatch?.trailer_key || 'YoHD9XEInc0';
+      const fallbackKey = benchmarkMatch?.trailer_key || 'zSWdZVtXT7E';
       return {
         id: numericId,
         trailerKey: fallbackKey,

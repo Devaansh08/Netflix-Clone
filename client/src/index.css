@@ -9,17 +9,25 @@
   --color-netflix-black: #141414;
   --color-netflix-dark: #181818;
   --color-netflix-gray: #2F2F2F;
+  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #141414;
+  background-color: #ECECEF;
   color: #FFFFFF;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  letter-spacing: -0.01em;
+}
+
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
 }
 
 /* Custom Netflix-style Horizontal Scrollbar (Hidden yet scrollable) */
@@ -38,4 +46,76 @@ body {
 
 .banner-left-fade {
   background-image: linear-gradient(90deg, rgba(20, 20, 20, 0.9) 0%, rgba(20, 20, 20, 0.4) 50%, transparent 100%);
+}
+
+/* ==============================================================================
+   Apple VisionOS / Spatial Glassmorphic UI & 3D Coverflow Styles
+   ============================================================================== */
+
+.perspective-1200 {
+  perspective: 1200px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+/* Card 3D Coverflow Transformations */
+.rotate-y-left {
+  transform: perspective(1200px) rotateY(24deg) scale(0.86) translateZ(-60px);
+}
+
+.rotate-y-right {
+  transform: perspective(1200px) rotateY(-24deg) scale(0.86) translateZ(-60px);
+}
+
+.rotate-y-far-left {
+  transform: perspective(1200px) rotateY(36deg) scale(0.74) translateZ(-130px);
+}
+
+.rotate-y-far-right {
+  transform: perspective(1200px) rotateY(-36deg) scale(0.74) translateZ(-130px);
+}
+
+.rotate-y-center {
+  transform: perspective(1200px) rotateY(0deg) scale(1.04) translateZ(40px);
+}
+
+/* High-Contrast Eye-Catching Text Glows */
+.text-glow-red {
+  text-shadow: 0 0 25px rgba(229, 9, 20, 0.8), 0 0 50px rgba(229, 9, 20, 0.4);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 25px rgba(6, 182, 212, 0.8), 0 0 50px rgba(6, 182, 212, 0.4);
+}
+
+.text-glow-amber {
+  text-shadow: 0 0 25px rgba(245, 158, 11, 0.8), 0 0 50px rgba(245, 158, 11, 0.4);
+}
+
+.text-glow-emerald {
+  text-shadow: 0 0 25px rgba(16, 185, 129, 0.8), 0 0 50px rgba(16, 185, 129, 0.4);
+}
+
+.card-reflection {
+  -webkit-box-reflect: below 4px linear-gradient(transparent 70%, rgba(255, 255, 255, 0.12));
+}
+
+/* Spatial VisionOS Floating Glass Island Shell */
+.spatial-glass {
+  background: rgba(16, 16, 20, 0.92);
+  backdrop-filter: blur(50px) saturate(190%);
+  -webkit-backdrop-filter: blur(50px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 40px 110px rgba(0, 0, 0, 0.4), 0 12px 35px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* Floating Vertical Dock Navigation Pill */
+.spatial-dock {
+  background: rgba(18, 18, 22, 0.94);
+  backdrop-filter: blur(35px);
+  -webkit-backdrop-filter: blur(35px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }

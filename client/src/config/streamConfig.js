@@ -12,22 +12,34 @@
  */
 
 export const DEMO_STREAMS = {
-  // Big Buck Bunny (Blender Foundation - Creative Commons 3.0)
-  default: {
-    title: 'Big Buck Bunny (Blender Open Movie)',
-    streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-    isDemo: true
-  },
-  // Sintel (Blender Foundation - Creative Commons 3.0)
+  // Sintel (Blender Foundation - Fantasy / Adventure)
   sintel: {
-    title: 'Sintel (Blender Open Movie)',
+    title: 'Sintel (Blender Open Movie - Fantasy)',
     streamUrl: 'https://bitmovin-a.akamaihd.net/content/sintel/hls/playlist.m3u8',
     isDemo: true
   },
-  // Tears of Steel (Blender VFX Open Movie)
+  // Tears of Steel (Blender VFX Open Movie - Sci-Fi / Action)
   tearsOfSteel: {
-    title: 'Tears of Steel (Blender Open Movie)',
+    title: 'Tears of Steel (Blender VFX Open Movie - Sci-Fi)',
     streamUrl: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+    isDemo: true
+  },
+  // Angel One (Shaka Adaptive Master Stream - Drama / Sci-Fi)
+  angelOne: {
+    title: 'Angel One (Adaptive Bitrate Master Stream)',
+    streamUrl: 'https://storage.googleapis.com/shaka-demo-assets/angel-one-hls/hls.m3u8',
+    isDemo: true
+  },
+  // View From A Blue Moon (Action Sports 4K)
+  blueMoon: {
+    title: 'View From A Blue Moon (Action 4K Cinema)',
+    streamUrl: 'https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4',
+    isDemo: true
+  },
+  // Big Buck Bunny (Blender Animation)
+  default: {
+    title: 'Big Buck Bunny (Blender Open Movie)',
+    streamUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
     isDemo: true
   }
 };
@@ -37,14 +49,21 @@ export const DEMO_STREAMS = {
  * Maps known TMDB IDs or falls back gracefully to a verified CC open movie stream.
  */
 export const getStreamForMovie = (movieId) => {
-  const numericId = Number(movieId);
-  if (numericId === 27205) {
-    return DEMO_STREAMS.sintel;
-  }
-  if (numericId === 157336) {
-    return DEMO_STREAMS.tearsOfSteel;
-  }
-  return DEMO_STREAMS.default;
+  const numericId = Math.abs(Number(movieId) || 0);
+  if (numericId === 27205) return DEMO_STREAMS.sintel;
+  if (numericId === 157336) return DEMO_STREAMS.tearsOfSteel;
+  if (numericId === 60574 || numericId === 1396) return DEMO_STREAMS.angelOne;
+  if (numericId === 512195 || numericId === 545609) return DEMO_STREAMS.blueMoon;
+
+  // Intelligently distribute streams so different movies don't all look identical
+  const streams = [
+    DEMO_STREAMS.tearsOfSteel,
+    DEMO_STREAMS.sintel,
+    DEMO_STREAMS.angelOne,
+    DEMO_STREAMS.blueMoon,
+    DEMO_STREAMS.default
+  ];
+  return streams[numericId % streams.length];
 };
 
 export default DEMO_STREAMS;

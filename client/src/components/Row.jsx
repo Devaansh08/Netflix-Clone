@@ -1,40 +1,31 @@
 /**
  * @file Row.jsx
- * @description Horizontally scrollable carousel row featuring smooth scrolling, 
- * chevron pagination, and Top 10 rank indicator support.
- * 
- * DATA FLOW:
- * [Home Page] ──► Passes `movies` or invokes category query hook
- *      │
- *      ▼
- * [Row Component]
- *      │
- *      ├──► Calculates scroll offset via DOM ref (`scrollBy({ left: ±distance })`)
- *      └──► Maps movie items into `<MovieCard />` components (preserving videoClipUrl, maturityRating, etc.)
- * 
- * WHY THIS MATTERS FOR INTERVIEWS & PRODUCTION:
- * 1. Native Smooth Scrolling:
- *    Using standard DOM `scrollBy({ behavior: 'smooth' })` with CSS `scroll-behavior: smooth` leverages
- *    hardware-accelerated GPU scrolling without needing heavy external carousel libraries.
- * 2. Mobile Touch & Desktop Pointer Support:
- *    Supports natural touch swipe on smartphones and tablets while offering hover chevron arrows on desktops.
- * 3. Complete Metadata Preservation:
- *    Spreads all movie attributes so `<MovieCard />` has access to `videoClipUrl`, `maturityRating`, `genres`, and `audioLanguages`.
+ * @description Horizontally scrollable carousel row featuring automatic smooth sliding, 
+ * chevron pagination, pause on hover, and Top 10 rank indicator support.
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import MovieCard from './MovieCard.jsx';
 import { RowSkeleton } from './Skeleton.jsx';
 
-export const Row = ({ title, movies = [], isLoading = false, onSelect, isTop10 = false }) => {
+export const Row = ({ 
+  title, 
+  movies = [], 
+  isLoading = false, 
+  onSelect, 
+  isTop10 = false,
+  autoSlide = true,
+  slideInterval = 6000
+}) => {
   const rowRef = useRef(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleScroll = (direction) => {
     if (rowRef.current) {
       const { scrollLeft, clientWidth } = rowRef.current;
-      const scrollAmount = clientWidth * 0.75; // Scroll 75% of visible width
+      const scrollAmount = clientWidth * 0.75;
 
       const targetScroll = direction === 'left' 
         ? scrollLeft - scrollAmount 
@@ -53,6 +44,31 @@ export const Row = ({ title, movies = [], isLoading = false, onSelect, isTop10 =
     }
   };
 
+  /**
+   * Automatic Sliding Animation:
+   * Periodically slides forward and loops back smoothly to start.
+   */
+  useEffect(() => {
+    if (!autoSlide || isHovered || movies.length === 0) return;
+
+    const stagger = (title.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 2000);
+    const effectiveInterval = slideInterval + stagger;
+
+    const timer = setInterval(() => {
+      if (!rowRef.current) return;
+      const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
+
+      if (scrollLeft + clientWidth >= scrollWidth - 25) {
+        rowRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        const step = Math.max(260, Math.round(clientWidth * 0.5));
+        rowRef.current.scrollBy({ left: step, behavior: 'smooth' });
+      }
+    }, effectiveInterval);
+
+    return () => clearInterval(timer);
+  }, [autoSlide, isHovered, movies.length, slideInterval, title]);
+
   if (isLoading) {
     return <RowSkeleton title={title} />;
   }
@@ -63,7 +79,9 @@ export const Row = ({ title, movies = [], isLoading = false, onSelect, isTop10 =
 
   return (
     <div 
-      className="group/row relative space-y-2 px-4 md:px-12 my-6"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="group/row relative space-y-2 px-4 md:px-12 my-6 select-none"
       style={{ contentVisibility: 'auto', containIntrinsicSize: '320px' }}
     >
       {/* Category Row Title */}
@@ -94,7 +112,7 @@ export const Row = ({ title, movies = [], isLoading = false, onSelect, isTop10 =
         <div
           ref={rowRef}
           onScroll={onScrollCheck}
-          className="no-scrollbar flex items-center gap-3 sm:gap-4 overflow-x-auto overflow-y-visible py-5 scroll-smooth px-1"
+          className="no-scrollbar flex items-center gap-3 sm:gap-4 overflow-x-auto overflow-y-visible py-7 -my-3.5 scroll-smooth px-1"
         >
           {movies.map((movie, idx) => (
             <MovieCard

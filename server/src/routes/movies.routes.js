@@ -20,9 +20,13 @@ import {
   getByGenre,
   getByLanguage,
   getMature18Plus,
+  getTvSeries,
   search,
   getDetails,
-  getVideos
+  getVideos,
+  getFreeDbHealth,
+  getFreeDbSearch,
+  getFreeDbExpanded
 } from '../controllers/movies.controller.js';
 
 const router = Router();
@@ -42,6 +46,10 @@ router.get('/popular', getPopular);
 router.get('/genre/:genreId', getByGenre);
 router.get('/language/:languageCode', getByLanguage);
 router.get('/mature-18plus', getMature18Plus);
+router.get('/series', getTvSeries);
+router.get('/freedb/health', getFreeDbHealth);
+router.get('/freedb/search', getFreeDbSearch);
+router.get('/freedb/expanded', getFreeDbExpanded);
 router.get('/search', search);
 
 // Dynamic item routes

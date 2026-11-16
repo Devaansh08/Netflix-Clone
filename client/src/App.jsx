@@ -35,6 +35,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import NetflixIntro from './components/NetflixIntro.jsx';
 
 // Route-level code splitting (Lazy Loading)
 const Home = lazy(() => import('./pages/Home.jsx'));
@@ -68,6 +69,9 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
+          {/* Netflix Cinematic Opening Intro */}
+          <NetflixIntro />
+
           <Suspense fallback={<PageFallback />}>
             <Routes>
               {/* Public Catalog & Authentication Routes */}

@@ -79,6 +79,17 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
+   * 1-Click Guest & Recruiter Instant Demo Login.
+   */
+  const loginAsDemo = async () => {
+    const response = await api.post('/auth/demo');
+    if (response.data.success && response.data.user) {
+      setUser(response.data.user);
+    }
+    return response.data;
+  };
+
+  /**
    * End current session and clear auth cookie.
    */
   const logout = async () => {
@@ -103,6 +114,7 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     login,
     signup,
+    loginAsDemo,
     logout,
     checkAuth,
     updateLocalMyList,

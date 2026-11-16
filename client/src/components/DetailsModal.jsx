@@ -25,7 +25,8 @@ import {
   ShieldAlert, 
   Volume2, 
   Radio,
-  Share2
+  Share2,
+  Tv
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useMovieDetails, useMovieVideos, useMyList, useAddToListMutation, useRemoveFromListMutation } from '../api/movieQueries.js';
@@ -62,12 +63,31 @@ export const DetailsModal = ({ movie, onClose }) => {
       navigate('/login', {
         state: {
           from: { pathname: `/watch/${movie.id}` },
-          message: 'Please sign in or create an account to watch full movies and videos on StreamVerse.'
+          message: 'Please sign in or create an account to watch full movies and videos on Netflix.'
         }
       });
       return;
     }
     navigate(`/watch/${movie.id}`, { state: { movie } });
+  };
+
+  const handlePlayEpisode = (episode) => {
+    onClose();
+    if (!user) {
+      navigate('/login', {
+        state: {
+          from: { pathname: `/watch/${movie.id}?episode=${episode.episodeNumber}` },
+          message: `Please sign in or create an account to stream ${movie.title}.`
+        }
+      });
+      return;
+    }
+    navigate(`/watch/${movie.id}?episode=${episode.episodeNumber}`, {
+      state: {
+        movie,
+        episode
+      }
+    });
   };
 
   const handleToggleList = () => {
@@ -246,6 +266,66 @@ export const DetailsModal = ({ movie, onClose }) => {
           <p className="text-sm sm:text-base leading-relaxed text-neutral-300">
             {movie.overview || 'No synopsis available for this title.'}
           </p>
+
+          {/* TV Series Episodes & Seasons Breakdown */}
+          {movie.mediaType === 'tv' && (
+            <div className="pt-4 border-t border-neutral-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Tv className="h-4 w-4 text-[#E50914]" />
+                  <h3 className="text-sm sm:text-base font-bold text-white tracking-tight">
+                    Episodes & Seasons
+                  </h3>
+                </div>
+                <div className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold text-neutral-300 border border-neutral-700">
+                  {movie.seasons ? `Season 1 (${movie.seasons} Seasons Total)` : 'Season 1'}
+                </div>
+              </div>
+
+              {/* Episodes List */}
+              <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 no-scrollbar">
+                {(movie.episodes && movie.episodes.length > 0 ? movie.episodes : [
+                  { episodeNumber: 1, title: 'Chapter 1: The Beginning', duration: '52m', overview: movie.overview },
+                  { episodeNumber: 2, title: 'Chapter 2: The Rising Storm', duration: '49m', overview: 'Tensions escalate as hidden agendas surface across competing factions.' },
+                  { episodeNumber: 3, title: 'Chapter 3: The Reckoning', duration: '58m', overview: 'A pivotal confrontation forces an unexpected alliance in the face of crisis.' }
+                ]).map((ep) => (
+                  <div
+                    key={ep.episodeNumber}
+                    onClick={() => handlePlayEpisode(ep)}
+                    className="group/ep flex items-start gap-3 rounded-xl bg-neutral-900/80 hover:bg-neutral-800/90 p-3 border border-white/5 hover:border-white/20 transition-all cursor-pointer"
+                  >
+                    {/* Episode Number badge */}
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-800 group-hover/ep:bg-[#E50914] text-xs font-bold text-neutral-300 group-hover/ep:text-white transition-colors">
+                      {ep.episodeNumber}
+                    </div>
+
+                    {/* Episode Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs sm:text-sm font-bold text-white group-hover/ep:text-[#E50914] transition-colors truncate">
+                          {ep.title}
+                        </h4>
+                        <span className="text-[11px] font-medium text-neutral-400 whitespace-nowrap">
+                          {ep.duration || '48m'}
+                        </span>
+                      </div>
+                      <p className="line-clamp-2 text-xs text-neutral-400 mt-1 leading-relaxed">
+                        {ep.overview || movie.overview}
+                      </p>
+                    </div>
+
+                    {/* Play button */}
+                    <button
+                      aria-label={`Play episode ${ep.episodeNumber}`}
+                      className="self-center p-2 rounded-full bg-white/5 group-hover/ep:bg-white text-neutral-400 group-hover/ep:text-black transition-all flex-shrink-0"
+                    >
+                      <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Genres Badges */}
           {movie.genres && movie.genres.length > 0 && (

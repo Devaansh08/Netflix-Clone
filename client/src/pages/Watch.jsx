@@ -21,7 +21,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Player from '../components/Player.jsx';
 import { getStreamForMovie } from '../config/streamConfig.js';
-import { useMovieDetails } from '../api/movieQueries.js';
+import { useMovieDetails, useMovieVideos } from '../api/movieQueries.js';
 import api from '../api/axios.js';
 
 export const Watch = () => {
@@ -32,10 +32,21 @@ export const Watch = () => {
   const [initialProgress, setInitialProgress] = useState(0);
   const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
 
-  // Retrieve passed movie from navigation state, or fallback to fetching from API
+  // Retrieve passed movie and episode from navigation state or URL query
   const passedMovie = location.state?.movie;
+  const passedEpisode = location.state?.episode;
+  const searchParams = new URLSearchParams(location.search);
+  const episodeParam = searchParams.get('episode');
+
   const { data: fetchedMovie, isLoading: isMovieLoading } = useMovieDetails(!passedMovie ? id : null);
+  const { data: videoData } = useMovieVideos(id);
   const activeMovie = passedMovie || fetchedMovie;
+
+  const resolvedEpisode = passedEpisode || (
+    episodeParam && activeMovie?.episodes
+      ? activeMovie.episodes.find((ep) => ep.episodeNumber === Number(episodeParam))
+      : null
+  );
 
   // Fetch saved progress for this movie
   useEffect(() => {
@@ -60,7 +71,7 @@ export const Watch = () => {
     };
   }, [id]);
 
-  if (isMovieLoading || !isHistoryLoaded) {
+  if (isMovieLoading && !passedMovie) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-black">
         <div className="flex flex-col items-center gap-4">
@@ -73,15 +84,25 @@ export const Watch = () => {
     );
   }
 
-  const movieStreamUrl = activeMovie?.streamUrl || activeMovie?.videoClipUrl;
+  const displayTitle = resolvedEpisode
+    ? `${activeMovie?.title || 'Series'} - S1:E${resolvedEpisode.episodeNumber} ${resolvedEpisode.title}`
+    : (activeMovie?.title || 'Feature Film');
+
+  const resolvedTrailerKey = activeMovie?.trailerKey || activeMovie?.trailer_key || videoData?.trailerKey || null;
+
+  const movieStreamUrl = resolvedEpisode?.streamUrl || activeMovie?.streamUrl || activeMovie?.videoClipUrl;
   const streamInfo = movieStreamUrl
-    ? { title: activeMovie?.title || 'Feature Film', streamUrl: movieStreamUrl, isDemo: true }
+    ? { title: displayTitle, streamUrl: movieStreamUrl, isDemo: true }
     : getStreamForMovie(id);
 
   return (
     <Player
-      movie={activeMovie || { id: Number(id), title: 'StreamVerse Demo Feature' }}
+      movie={{
+        ...(activeMovie || { id: Number(id), title: 'Netflix Feature' }),
+        title: displayTitle
+      }}
       streamInfo={streamInfo}
+      trailerKey={resolvedTrailerKey}
       initialProgress={initialProgress}
     />
   );

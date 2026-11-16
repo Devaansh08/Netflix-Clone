@@ -118,6 +118,20 @@ export const useMature18PlusMovies = (page = 1) => {
 };
 
 /**
+ * Fetch Binge-Worthy TV Series & Shows collection.
+ */
+export const useTvSeries = (page = 1) => {
+  return useQuery({
+    queryKey: ['movies', 'series', page],
+    queryFn: async () => {
+      const { data } = await api.get(`/movies/series?page=${page}`);
+      return data;
+    },
+    staleTime: FIVE_MINUTES_MS
+  });
+};
+
+/**
  * Search movies by keyword string.
  */
 export const useSearchMovies = (query, page = 1) => {
@@ -187,6 +201,20 @@ export const useContinueWatching = () => {
       return data.history || [];
     },
     staleTime: 30 * 1000 // 30 seconds fresh duration for active viewing
+  });
+};
+
+/**
+ * Fetch expanded movies and series from Free Movie Series DB API
+ */
+export const useFreeDbExpanded = () => {
+  return useQuery({
+    queryKey: ['movies', 'freedb', 'expanded'],
+    queryFn: async () => {
+      const { data } = await api.get('/movies/freedb/expanded');
+      return data.results || [];
+    },
+    staleTime: 15 * 60 * 1000
   });
 };
 

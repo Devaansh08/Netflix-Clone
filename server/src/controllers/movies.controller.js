@@ -12,6 +12,7 @@
  */
 
 import tmdbService from '../services/tmdbService.js';
+import freeMovieDbService from '../services/freeMovieDbService.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 /**
@@ -117,8 +118,66 @@ export const getMature18Plus = async (req, res, next) => {
 };
 
 /**
+ * @route   GET /api/movies/series
+ * @desc    Get binge-worthy TV series and shows
+ * @access  Public
+ */
+export const getTvSeries = async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const data = await tmdbService.getTvSeries(page);
+    res.status(200).json({ success: true, ...data });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/movies/freedb/health
+ * @desc    Probes the external Free Movie Series DB API (IMDbOT) health and endpoint statuses
+ * @access  Public
+ */
+export const getFreeDbHealth = async (req, res, next) => {
+  try {
+    const health = await freeMovieDbService.checkHealth();
+    res.status(200).json({ success: true, ...health });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/movies/freedb/search?q=
+ * @desc    Search directly against the Free Movie Series DB API
+ * @access  Public
+ */
+export const getFreeDbSearch = async (req, res, next) => {
+  try {
+    const query = req.query.q || '';
+    const results = await freeMovieDbService.searchTitles(query);
+    res.status(200).json({ success: true, query, totalResults: results.length, results });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/movies/freedb/expanded
+ * @desc    Get pre-aggregated expanded catalog of popular titles from Free Movie Series DB
+ * @access  Public
+ */
+export const getFreeDbExpanded = async (req, res, next) => {
+  try {
+    const results = await freeMovieDbService.getExpandedCatalog();
+    res.status(200).json({ success: true, totalResults: results.length, results });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @route   GET /api/movies/search?q=
- * @desc    Search movies by query string
+ * @desc    Search movies and series by query string across TMDB and Free Movie Series DB
  * @access  Private
  */
 export const search = async (req, res, next) => {
@@ -126,8 +185,34 @@ export const search = async (req, res, next) => {
     const query = req.query.q || '';
     const page = Math.max(1, parseInt(req.query.page || '1', 10));
 
-    const data = await tmdbService.search(query, page);
-    res.status(200).json({ success: true, ...data });
+    // Parallel federated search
+    const [tmdbData, freeDbResults] = await Promise.all([
+      tmdbService.search(query, page),
+      query.trim() ? freeMovieDbService.searchTitles(query).catch(() => []) : Promise.resolve([])
+    ]);
+
+    const combinedResults = [...(tmdbData?.results || [])];
+    const seenIds = new Set(combinedResults.map((m) => m.id));
+    const seenTitles = new Set(combinedResults.map((m) => m.title.toLowerCase().trim()));
+
+    // Merge external results avoiding duplicate IDs or identical titles
+    freeDbResults.forEach((extItem) => {
+      const lower = extItem.title.toLowerCase().trim();
+      if (!seenIds.has(extItem.id) && !seenTitles.has(lower)) {
+        seenIds.add(extItem.id);
+        seenTitles.add(lower);
+        combinedResults.push(extItem);
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      query,
+      page,
+      totalPages: tmdbData?.totalPages || 1,
+      totalResults: combinedResults.length,
+      results: combinedResults
+    });
   } catch (error) {
     next(error);
   }

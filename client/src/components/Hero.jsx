@@ -105,7 +105,7 @@ export const Hero = ({ slides = [], isLoading, onSelect }) => {
       navigate('/login', {
         state: {
           from: { pathname: `/watch/${activeMovie.id}` },
-          message: 'Please sign in or create an account to watch full movies and videos on StreamVerse.'
+          message: 'Please sign in or create an account to watch full movies and videos on Netflix.'
         }
       });
       return;

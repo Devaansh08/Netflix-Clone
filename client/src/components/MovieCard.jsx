@@ -1,20 +1,8 @@
 /**
  * @file MovieCard.jsx
- * @description Advanced streaming cinema card featuring instant hover video streaming, 
- * live progress scrubber, audio mute toggle, thumbs-up reaction, and resilient image loading.
- * 
- * WHY THIS MATTERS FOR INTERVIEWS & PRODUCTION:
- * 1. Instant Video Streaming on Hover:
- *    Simulates the signature Netflix desktop hover experience: after a 200ms debounce, 
- *    the static poster smoothly crossfades into a live streaming video clip with an active
- *    playback progress bar and interactive audio toggle.
- * 2. Mobile & Tablet Auto-Play via IntersectionObserver:
- *    Because touchscreens lack hover events, an IntersectionObserver monitors when the card
- *    enters the active central viewport and initiates muted video playback automatically.
- * 3. Defensive Image Engineering (`<SafeImage />`):
- *    Guarantees every poster and cover renders without broken image icons or layout shift.
- * 4. User Interaction & Engagement:
- *    Includes quick Play, My List bookmarking, and Thumbs Up rating toggles directly from the card.
+ * @description High-performance streaming cinema card featuring smooth hover elevation,
+ * debounced video preview streaming, responsive iOS/spatial glass pop-up drawer,
+ * match percentage, and seamless user interaction (Play, Wishlist, Like, Details).
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -28,7 +16,6 @@ import {
   Star, 
   Volume2, 
   VolumeX, 
-  ShieldAlert, 
   ThumbsUp, 
   Radio
 } from 'lucide-react';
@@ -49,44 +36,72 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
   const [isMuted, setIsMuted] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [streamProgress, setStreamProgress] = useState(0);
+  const [allowAutoplay, setAllowAutoplay] = useState(true);
 
   const cardRef = useRef(null);
   const videoRef = useRef(null);
   const hoverTimerRef = useRef(null);
+  const prefetchTimerRef = useRef(null);
 
   const isSavedInList = myList.some((item) => item.tmdbId === movie.id);
 
-  // Calculate dynamic match percentage based on vote rating
+  // Dynamic match percentage
   const matchPercentage = Math.min(99, Math.max(85, Math.round((movie.rating || 8.0) * 11 + 3)));
+
+  // Load autoplay preference from settings
+  useEffect(() => {
+    const checkSetting = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem('streamverse_settings') || '{}');
+        setAllowAutoplay(saved.autoplayPreviews !== false);
+      } catch {
+        setAllowAutoplay(true);
+      }
+    };
+    checkSetting();
+
+    const onSettingsChange = (e) => {
+      if (e.detail?.autoplayPreviews !== undefined) {
+        setAllowAutoplay(e.detail.autoplayPreviews);
+      }
+    };
+    window.addEventListener('streamverse_settings_changed', onSettingsChange);
+    return () => window.removeEventListener('streamverse_settings_changed', onSettingsChange);
+  }, []);
 
   /**
    * Mobile and Tablet Auto-Play Preview:
-   * Uses IntersectionObserver to auto-stream the video clip when the card enters the central viewport on mobile.
+   * Uses IntersectionObserver only on touchscreens when card is in the center viewport.
    */
   useEffect(() => {
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    if (!isMobile || !cardRef.current) return;
+    if (!isMobile || !cardRef.current || !allowAutoplay) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.75) {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.8) {
             setIsPlayingPreview(true);
           } else {
             setIsPlayingPreview(false);
           }
         });
       },
-      { threshold: 0.75 }
+      { threshold: 0.8 }
     );
 
     observer.observe(cardRef.current);
     return () => observer.disconnect();
+  }, [allowAutoplay]);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+      if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
+    };
   }, []);
 
-  /**
-   * Video Time Update for Live Streaming Progress Scrubber
-   */
   const handleTimeUpdate = () => {
     if (videoRef.current && videoRef.current.duration) {
       const progress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
@@ -95,36 +110,38 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
   };
 
   /**
-   * Hover Handlers for Desktop
+   * Debounced Mouse Enter:
+   * - 180ms delay before prefetching details (prevents network flood during fast scrolling)
+   * - 380ms delay before starting video stream (ensures user actually stopped to hover)
    */
   const handleMouseEnter = () => {
-    // 1. Prefetch query data for instant modal load
-    if (movie?.id) {
-      queryClient.prefetchQuery({
-        queryKey: ['movie', 'details', movie.id],
-        queryFn: async () => {
-          const { data } = await api.get(`/movies/${movie.id}`);
-          return data.movie;
-        },
-        staleTime: 10 * 60 * 1000
-      });
-      queryClient.prefetchQuery({
-        queryKey: ['movie', 'videos', movie.id],
-        queryFn: async () => {
-          const { data } = await api.get(`/movies/${movie.id}/videos`);
-          return data;
-        },
-        staleTime: 10 * 60 * 1000
-      });
-    }
+    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
 
-    // 2. Delay video stream start by 220ms to allow smooth browsing without video thrashing
-    hoverTimerRef.current = setTimeout(() => {
-      setIsPlayingPreview(true);
-    }, 220);
+    // 1. Debounced Prefetch
+    prefetchTimerRef.current = setTimeout(() => {
+      if (movie?.id) {
+        queryClient.prefetchQuery({
+          queryKey: ['movie', 'details', movie.id],
+          queryFn: async () => {
+            const { data } = await api.get(`/movies/${movie.id}`);
+            return data.movie;
+          },
+          staleTime: 10 * 60 * 1000
+        });
+      }
+    }, 180);
+
+    // 2. Debounced Video Preview (only if user enabled autoplay in settings)
+    if (allowAutoplay && (movie?.videoClipUrl || movie?.trailerKey)) {
+      hoverTimerRef.current = setTimeout(() => {
+        setIsPlayingPreview(true);
+      }, 380);
+    }
   };
 
   const handleMouseLeave = () => {
+    if (prefetchTimerRef.current) clearTimeout(prefetchTimerRef.current);
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     setIsPlayingPreview(false);
     setStreamProgress(0);
@@ -159,7 +176,7 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
       navigate('/login', {
         state: {
           from: { pathname: `/watch/${movie.id}` },
-          message: 'Please sign in or create an account to watch full movies and videos on StreamVerse.'
+          message: 'Please sign in or create an account to watch full movies and videos on Netflix.'
         }
       });
       return;
@@ -186,7 +203,7 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
       onClick={() => onSelect && onSelect(movie)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="group relative flex-shrink-0 cursor-pointer overflow-visible rounded-xl transition-all duration-300 ease-out w-36 sm:w-44 md:w-52 select-none"
+      className="group relative flex-shrink-0 cursor-pointer overflow-visible rounded-2xl w-36 sm:w-44 md:w-52 select-none will-change-transform transform-gpu transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] hover:-translate-y-3 hover:z-40"
     >
       {/* Optional Top 10 Giant Rank Number */}
       {rankNumber && (
@@ -195,13 +212,15 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
         </span>
       )}
 
-      {/* Main Card Body */}
-      <div className="relative z-10 overflow-hidden rounded-xl bg-neutral-900 shadow-md ring-1 ring-white/10 transition-all duration-300 group-hover:z-40 group-hover:scale-110 group-hover:shadow-2xl group-hover:shadow-black group-hover:ring-white/30">
+      {/* Main Card Body with Smooth Scaling and Deep Shadow */}
+      <div className="relative z-10 overflow-hidden rounded-2xl bg-neutral-900/95 ring-1 ring-white/10 shadow-lg shadow-black/80 transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-[1.05] group-hover:ring-white/35 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.95)]">
         
-        {/* Top Badges: Rating, 18+ Mature, Live Streaming Pulse */}
+        {/* Sliding Glass Sheen Light Reflection */}
+        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none z-30" />
+
+        {/* Top Badges: Rating, 18+ Mature, Live Preview */}
         <div className="absolute top-2 left-2 right-2 z-30 flex items-center justify-between pointer-events-none">
           <div className="flex items-center gap-1">
-            {/* Live Streaming Indicator when playing preview */}
             {isPlayingPreview ? (
               <span className="flex items-center gap-1 rounded-full bg-red-600/90 backdrop-blur-md px-2 py-0.5 text-[9px] font-black uppercase text-white shadow-lg animate-pulse">
                 <Radio className="h-2.5 w-2.5" />
@@ -222,6 +241,13 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
                 18+
               </span>
             )}
+
+            {/* TV Series Badge */}
+            {movie.mediaType === 'tv' && (
+              <span className="rounded bg-neutral-900/90 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-extrabold uppercase text-neutral-200 border border-white/20 shadow-sm">
+                TV
+              </span>
+            )}
           </div>
 
           {/* Audio Language Badge */}
@@ -234,24 +260,34 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
 
         {/* Media Container: Static Poster OR Streamed Video Clip */}
         <div className="aspect-[2/3] w-full overflow-hidden bg-neutral-950 relative">
-          {isPlayingPreview && movie.videoClipUrl ? (
+          {isPlayingPreview && (movie.videoClipUrl || movie.trailerKey) ? (
             <div className="h-full w-full relative">
-              <video
-                ref={videoRef}
-                src={movie.videoClipUrl}
-                autoPlay
-                playsInline
-                muted={isMuted}
-                loop
-                onTimeUpdate={handleTimeUpdate}
-                className="h-full w-full object-cover animate-in fade-in duration-300"
-              />
+              {movie.videoClipUrl ? (
+                <video
+                  ref={videoRef}
+                  src={movie.videoClipUrl}
+                  autoPlay
+                  playsInline
+                  muted={isMuted}
+                  loop
+                  onTimeUpdate={handleTimeUpdate}
+                  className="h-full w-full object-cover animate-in fade-in duration-300"
+                />
+              ) : (
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${movie.trailerKey}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&loop=1&playlist=${movie.trailerKey}&playsinline=1&modestbranding=1&rel=0`}
+                  title={movie.title}
+                  loading="lazy"
+                  allow="autoplay; encrypted-media"
+                  className="h-full w-full pointer-events-none scale-150 object-cover"
+                />
+              )}
 
               {/* Streaming Video Playback Progress Line */}
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/60 z-20">
                 <div 
                   className="h-full bg-[#E50914] transition-all duration-150"
-                  style={{ width: `${streamProgress}%` }}
+                  style={{ width: `${streamProgress || 40}%` }}
                 />
               </div>
 
@@ -259,7 +295,7 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
               <button
                 onClick={toggleMute}
                 aria-label={isMuted ? 'Unmute preview stream' : 'Mute preview stream'}
-                className="absolute bottom-3 right-2.5 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-black/80 text-white backdrop-blur-md hover:bg-red-600 hover:scale-110 active:scale-95 transition-all shadow-lg"
+                className="absolute bottom-3 right-2.5 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-black/80 text-white backdrop-blur-md hover:bg-red-600 hover:scale-110 active:scale-95 transition-all shadow-lg cursor-pointer"
               >
                 {isMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5 text-red-400" />}
               </button>
@@ -274,18 +310,24 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
           )}
         </div>
 
-        {/* Bottom Hover Drawer with Metadata and Quick Action Controls */}
-        <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end bg-gradient-to-t from-black via-black/85 to-transparent p-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100 z-30">
-          <h4 className="line-clamp-1 text-xs md:text-sm font-bold text-white drop-shadow">
+        {/* Bottom Pop-Up Drawer with Smooth Slide Transition */}
+        <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end bg-gradient-to-t from-black via-black/95 to-transparent pt-12 pb-3 px-3 opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out z-30 pointer-events-auto">
+          <h4 className="line-clamp-1 text-xs md:text-sm font-black text-white drop-shadow tracking-tight">
             {movie.title}
           </h4>
 
           {/* Metadata Specs: Match % • Maturity • 4K UHD */}
-          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-neutral-300">
+          <div className="mt-1 flex items-center gap-1.5 text-[10px] text-neutral-300 flex-wrap">
             <span className="font-bold text-green-400">{matchPercentage}% Match</span>
-            <span className="rounded border border-neutral-600 px-1 py-0.2 text-[8px] font-semibold text-neutral-300">
-              {movie.maturityRating || 'PG-13'}
-            </span>
+            {movie.mediaType === 'tv' ? (
+              <span className="rounded bg-red-600/30 border border-red-500/50 px-1 py-0.2 text-[8px] font-bold text-red-300 uppercase">
+                {movie.seasons ? `${movie.seasons}S` : 'TV'}
+              </span>
+            ) : (
+              <span className="rounded border border-neutral-600 px-1 py-0.2 text-[8px] font-semibold text-neutral-300">
+                {movie.maturityRating || 'PG-13'}
+              </span>
+            )}
             <span className="rounded border border-white/20 px-1 py-0.2 text-[8px] font-bold text-neutral-400">
               4K UHD
             </span>
@@ -298,7 +340,7 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
               onClick={handlePlay}
               aria-label={`Play ${movie.title}`}
               title="Play Full Movie"
-              className="flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full bg-white text-black transition-transform hover:scale-110 active:scale-90 shadow-md cursor-pointer"
+              className="flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full bg-white text-black transition-all hover:scale-115 active:scale-95 shadow-md shadow-white/20 cursor-pointer"
             >
               <Play className="h-3.5 w-3.5 md:h-4 md:w-4 fill-current ml-0.5" />
             </button>
@@ -308,7 +350,11 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
               onClick={handleToggleList}
               aria-label={isSavedInList ? 'Remove from My List' : 'Add to My List'}
               title={isSavedInList ? 'Saved in My List' : 'Add to My List'}
-              className="flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full border border-neutral-500 bg-neutral-900/90 text-white transition-all hover:scale-110 hover:border-white active:scale-90 shadow-md cursor-pointer"
+              className={`flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full border transition-all hover:scale-115 active:scale-95 shadow-md cursor-pointer ${
+                isSavedInList 
+                  ? 'border-green-500 bg-green-950/60 text-green-300' 
+                  : 'border-white/30 bg-black/60 text-white hover:border-white hover:bg-white/20'
+              }`}
             >
               {isSavedInList ? (
                 <Check className="h-3.5 w-3.5 md:h-4 md:w-4 text-green-400" />
@@ -322,11 +368,13 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
               onClick={handleToggleLike}
               aria-label="Rate title"
               title={isLiked ? 'Liked' : 'Rate this title'}
-              className={`flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full border border-neutral-500 bg-neutral-900/90 text-white transition-all hover:scale-110 hover:border-white active:scale-90 shadow-md cursor-pointer ${
-                isLiked ? 'text-red-500 border-red-500 bg-red-950/40' : ''
+              className={`flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full border transition-all hover:scale-115 active:scale-95 shadow-md cursor-pointer ${
+                isLiked 
+                  ? 'border-red-500 bg-red-950/60 text-red-400' 
+                  : 'border-white/30 bg-black/60 text-white hover:border-white hover:bg-white/20'
               }`}
             >
-              <ThumbsUp className={`h-3 w-3 md:h-3.5 md:w-3.5 ${isLiked ? 'fill-current text-red-500' : ''}`} />
+              <ThumbsUp className={`h-3 w-3 md:h-3.5 md:w-3.5 ${isLiked ? 'fill-current' : ''}`} />
             </button>
 
             {/* Details Modal Opener */}
@@ -337,7 +385,7 @@ export const MovieCard = ({ movie, onSelect, rankNumber = null }) => {
               }}
               aria-label={`More details for ${movie.title}`}
               title="More Details & Trailer"
-              className="ml-auto flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full border border-neutral-500 bg-neutral-900/90 text-white transition-all hover:scale-110 hover:border-white active:scale-90 shadow-md cursor-pointer"
+              className="ml-auto flex h-7 w-7 md:h-8 md:w-8 items-center justify-center rounded-full border border-white/30 bg-black/60 text-white transition-all hover:scale-115 hover:border-white hover:bg-white/20 active:scale-95 shadow-md cursor-pointer"
             >
               <Info className="h-3.5 w-3.5 md:h-4 md:w-4" />
             </button>

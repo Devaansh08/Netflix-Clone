@@ -104,7 +104,7 @@ export const SafeImage = ({
         <div className="absolute inset-0 flex flex-col items-center justify-between p-4 text-center bg-gradient-to-b from-neutral-900 via-neutral-950 to-black select-none border border-neutral-800 animate-in fade-in duration-300">
           <div className="flex w-full items-center justify-between opacity-50">
             <Film className="h-4 w-4 text-red-500" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">StreamVerse</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest text-neutral-400">Netflix</span>
           </div>
 
           <div className="my-auto space-y-1.5 px-2">

@@ -133,6 +133,38 @@ export const login = async (req, res, next) => {
 };
 
 /**
+ * @route   POST /api/auth/demo
+ * @desc    Instant 1-Click Guest & Recruiter Demo Login. Automatically provisions demo user.
+ * @access  Public
+ */
+export const demoLogin = async (req, res, next) => {
+  try {
+    const demoEmail = 'demo@streamverse.com';
+    let user = await User.findOne({ email: demoEmail }).select('+password');
+
+    if (!user) {
+      user = await User.create({
+        name: 'StreamVerse Guest Demo',
+        email: demoEmail,
+        password: 'DemoPassword2026!'
+      });
+    }
+
+    const token = user.generateAuthToken();
+    res.cookie('token', token, getCookieOptions());
+
+    res.status(200).json({
+      success: true,
+      message: 'Logged in as Demo User successfully',
+      token,
+      user: formatUserResponse(user)
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @route   POST /api/auth/logout
  * @desc    Clear authentication cookie and invalidate client session
  * @access  Public
