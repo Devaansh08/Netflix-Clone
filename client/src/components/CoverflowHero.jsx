@@ -197,7 +197,7 @@ export const CoverflowHero = ({ slides = [], onSelect }) => {
               <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/80" />
 
               {/* Slide Content Block (Matching Image 1: Peaky Blinders Typography & Action) */}
-              <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col justify-end p-6 sm:p-10 md:p-14 lg:p-16 z-20 max-w-3xl">
+              <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col justify-end p-4 sm:p-8 md:p-12 lg:p-16 z-20 max-w-3xl">
                 
                 {/* Metadata Badges Row: Rating, Year, Seasons, Audio, Resolution */}
                 <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 mb-2 sm:mb-3">
@@ -237,8 +237,8 @@ export const CoverflowHero = ({ slides = [], onSelect }) => {
                   </span>
                 </div>
 
-                {/* Giant Eye-Catching Title */}
-                <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase tracking-tight text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)] leading-none text-glow-red">
+                {/* Eye-Catching Title */}
+                <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-7xl font-black uppercase tracking-tight text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)] leading-tight sm:leading-none text-glow-red">
                   {slide.title}
                 </h1>
 
@@ -297,30 +297,28 @@ export const CoverflowHero = ({ slides = [], onSelect }) => {
         {/* =======================================================================
             FORWARD & PREVIOUS SLIDING CONTROLS (Next and Forward Buttons)
             ======================================================================= */}
-        {/* Previous / Backward Button */}
+        {/* Previous Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             slideBackward();
           }}
           aria-label="Previous slide"
-          title="Previous Movie"
-          className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-40 flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-black/65 hover:bg-[#E50914] text-white/90 hover:text-white backdrop-blur-2xl border border-white/20 transition-all hover:scale-110 active:scale-95 shadow-2xl cursor-pointer group/nav"
+          className="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-40 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/60 hover:bg-[#E50914] text-white/90 hover:text-white backdrop-blur-2xl border border-white/20 transition-all hover:scale-105 active:scale-95 shadow-2xl cursor-pointer group/nav"
         >
-          <ChevronLeft className="h-6 w-6 sm:h-7 sm:w-7 transition-transform group-hover/nav:-translate-x-0.5" />
+          <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover/nav:-translate-x-0.5" />
         </button>
 
-        {/* Next / Forward Button */}
+        {/* Next Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             slideForward();
           }}
           aria-label="Next slide"
-          title="Next Movie (Forward)"
-          className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-40 flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-black/65 hover:bg-[#E50914] text-white/90 hover:text-white backdrop-blur-2xl border border-white/20 transition-all hover:scale-110 active:scale-95 shadow-2xl cursor-pointer group/nav"
+          className="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-40 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-black/60 hover:bg-[#E50914] text-white/90 hover:text-white backdrop-blur-2xl border border-white/20 transition-all hover:scale-105 active:scale-95 shadow-2xl cursor-pointer group/nav"
         >
-          <ChevronRight className="h-6 w-6 sm:h-7 sm:w-7 transition-transform group-hover/nav:translate-x-0.5" />
+          <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 transition-transform group-hover/nav:translate-x-0.5" />
         </button>
 
         {/* Top Header Badge & Slide Counter */}
@@ -375,30 +373,30 @@ export const CoverflowHero = ({ slides = [], onSelect }) => {
       </div>
 
       {/* =========================================================================
-          BOTTOM SLIDE INDICATORS & CONTROLS
+          BOTTOM SLIDE INDICATORS & CONTROLS (Clean Minimal iOS Design, Zero Text Labels)
           ========================================================================= */}
       <div className="flex items-center justify-between px-3 sm:px-6 mt-3">
         <div className="flex items-center gap-2">
           <button
             onClick={slideBackward}
-            className="flex items-center gap-1 text-[11px] font-bold text-neutral-400 hover:text-white transition-colors cursor-pointer"
+            aria-label="Previous slide"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 hover:bg-white/15 text-neutral-400 hover:text-white border border-white/10 transition-all cursor-pointer active:scale-95"
           >
             <ChevronLeft className="h-4 w-4" />
-            <span>Prev</span>
           </button>
         </div>
 
-        {/* Progress Indicator Dots */}
-        <div className="flex items-center gap-2">
+        {/* Minimal iOS Progress Indicator Dots */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {slides.slice(0, 8).map((_, idx) => (
             <button
               key={idx}
               onClick={() => goToSlide(idx)}
               aria-label={`Go to slide ${idx + 1}`}
-              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+              className={`h-1 sm:h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
                 currentIndex === idx 
-                  ? 'w-10 bg-[#E50914] shadow-sm shadow-red-600' 
-                  : 'w-2.5 bg-white/20 hover:bg-white/40'
+                  ? 'w-7 sm:w-10 bg-[#E50914] shadow-sm shadow-red-600' 
+                  : 'w-2 sm:w-2.5 bg-white/20 hover:bg-white/40'
               }`}
             />
           ))}
@@ -407,9 +405,9 @@ export const CoverflowHero = ({ slides = [], onSelect }) => {
         <div className="flex items-center gap-2">
           <button
             onClick={slideForward}
-            className="flex items-center gap-1 text-[11px] font-bold text-neutral-400 hover:text-white transition-colors cursor-pointer"
+            aria-label="Next slide"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 hover:bg-white/15 text-neutral-400 hover:text-white border border-white/10 transition-all cursor-pointer active:scale-95"
           >
-            <span>Next (Forward)</span>
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
